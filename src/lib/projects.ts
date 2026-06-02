@@ -1,0 +1,325 @@
+import {
+  getCellIndicesForMinutes,
+  getCellState,
+  getPaintableCellIndices,
+} from "@/lib/cells";
+import { PROJECT_COLORS } from "@/lib/palette";
+import type { DayRecord, ProjectRecord, TaskRecord } from "@/types/canvas";
+
+export type ProjectRecordInput = {
+  name: string;
+  color: string;
+  ratio: number;
+  description?: string;
+};
+
+export type ProjectRatioValidation = {
+  valid: boolean;
+  total: number;
+  message?: string;
+};
+
+export type ProjectQuota = {
+  projectId: string;
+  projectName: string;
+  color: string;
+  ratio: number;
+  rawCells: number;
+  quotaCells: number;
+  paintedCells: number;
+  remainingCells: number;
+};
+
+export type ProjectUsage = ProjectQuota & {
+  overQuota: boolean;
+  percentOfQuotaUsed: number;
+};
+
+export function createProjectRecord(input: ProjectRecordInput): ProjectRecord {
+  const name = validateProjectName(input.name);
+  const color = validateProjectColor(input.color);
+  validateProjectRatio(input.ratio);
+
+  return {
+    id: createProjectId(name, color),
+    name,
+    color,
+    ratio: input.ratio,
+    description: input.description?.trim() || undefined,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+export function validateProjectColor(color: string): string {
+  const projectColor = PROJECT_COLORS.find(
+    (paletteColor) =>
+      paletteColor.hex.toLowerCase() === color.toLowerCase(),
+  );
+
+  if (!projectColor) {
+    throw new Error("Choose a project color from the palette.");
+  }
+
+  return projectColor.hex;
+}
+
+export function validateProjectRatios(
+  projects: ProjectRecord[],
+): ProjectRatioValidation {
+  const total = getProjectRatioTotal(projects);
+
+  if (projects.length === 0) {
+    return {
+      valid: false,
+      total,
+      message: "Add projects until the total ratio reaches 100.",
+    };
+  }
+
+  if (total !== 100) {
+    return {
+      valid: false,
+      total,
+      message: "Project ratios must total 100 before painting.",
+    };
+  }
+
+  return {
+    valid: true,
+    total,
+  };
+}
+
+export function calculateProjectCellQuotas(
+  projects: ProjectRecord[],
+  paintableCellCount: number,
+): ProjectQuota[] {
+  const totalRatio = getProjectRatioTotal(projects);
+  const quotaInputs = projects.map((project, index) => {
+    const rawCells = (paintableCellCount * project.ratio) / 100;
+    const floorCells = Math.floor(rawCells);
+
+    return {
+      project,
+      index,
+      rawCells,
+      quotaCells: totalRatio === 100 ? floorCells : 0,
+      remainder: rawCells - floorCells,
+    };
+  });
+
+  if (totalRatio === 100 && paintableCellCount > 0) {
+    const floorTotal = quotaInputs.reduce(
+      (totalCells, quotaInput) => totalCells + quotaInput.quotaCells,
+      0,
+    );
+    const remainingCells = paintableCellCount - floorTotal;
+    const sortedByRemainder = [...quotaInputs].sort((first, second) => {
+      if (second.remainder !== first.remainder) {
+        return second.remainder - first.remainder;
+      }
+
+      return first.index - second.index;
+    });
+
+    for (const quotaInput of sortedByRemainder.slice(0, remainingCells)) {
+      quotaInput.quotaCells += 1;
+    }
+  }
+
+  return quotaInputs.map(({ project, rawCells, quotaCells }) => ({
+    projectId: project.id,
+    projectName: project.name,
+    color: project.color,
+    ratio: project.ratio,
+    rawCells,
+    quotaCells,
+    paintedCells: 0,
+    remainingCells: quotaCells,
+  }));
+}
+
+export function getProjectUsageFromSlots(day: DayRecord): ProjectUsage[] {
+  const taskById = new Map(day.tasks.map((task) => [task.id, task]));
+  const paintedCellsByProject = new Map<string, number>();
+
+  for (let cellIndex = 0; cellIndex < 48; cellIndex += 1) {
+    const cell = getCellState(day.slots, cellIndex);
+
+    if (cell.state !== "colored" || !cell.taskId) {
+      continue;
+    }
+
+    const task = taskById.get(cell.taskId);
+    const project = task ? getTaskProject(day, task) : null;
+
+    if (!project) {
+      continue;
+    }
+
+    paintedCellsByProject.set(
+      project.id,
+      (paintedCellsByProject.get(project.id) ?? 0) + 1,
+    );
+  }
+
+  return calculateProjectCellQuotas(
+    day.projects,
+    getPaintableCellIndices(day.slots).length,
+  ).map((quota) => {
+    const paintedCells = paintedCellsByProject.get(quota.projectId) ?? 0;
+    const remainingCells = Math.max(0, quota.quotaCells - paintedCells);
+
+    return {
+      ...quota,
+      paintedCells,
+      remainingCells,
+      overQuota: paintedCells > quota.quotaCells,
+      percentOfQuotaUsed:
+        quota.quotaCells === 0
+          ? 0
+          : Math.round((paintedCells / quota.quotaCells) * 1000) / 10,
+    };
+  });
+}
+
+export function getProjectById(
+  day: DayRecord,
+  projectId: string,
+): ProjectRecord | null {
+  return day.projects.find((project) => project.id === projectId) ?? null;
+}
+
+export function getTaskProject(
+  day: DayRecord,
+  task: TaskRecord,
+): ProjectRecord | null {
+  return getProjectById(day, task.projectId);
+}
+
+export function getTaskProjectName(day: DayRecord, task: TaskRecord): string {
+  return getTaskProject(day, task)?.name ?? task.projectName ?? "Untitled Project";
+}
+
+export function getTaskProjectColor(day: DayRecord, task: TaskRecord): string {
+  return (
+    getTaskProject(day, task)?.color ??
+    getFallbackTaskColor(task.color) ??
+    PROJECT_COLORS[0].hex
+  );
+}
+
+export function getProjectTaskCount(
+  day: DayRecord,
+  projectId: string,
+): number {
+  return day.tasks.filter((task) => task.projectId === projectId).length;
+}
+
+export function canDeleteProject(
+  day: DayRecord,
+  projectId: string,
+): { ok: boolean; reason?: string } {
+  const projectExists = day.projects.some((project) => project.id === projectId);
+
+  if (!projectExists) {
+    return {
+      ok: false,
+      reason: "Project was not found.",
+    };
+  }
+
+  return {
+    ok: true,
+  };
+}
+
+export function removeProject(
+  day: DayRecord,
+  projectId: string,
+): DayRecord {
+  const deleteCheck = canDeleteProject(day, projectId);
+
+  if (!deleteCheck.ok) {
+    throw new Error(deleteCheck.reason ?? "Project cannot be deleted.");
+  }
+
+  return {
+    ...day,
+    projects: day.projects.filter((project) => project.id !== projectId),
+    tasks: day.tasks.filter((task) => task.projectId !== projectId),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export function getProjectRatioTotal(projects: ProjectRecord[]): number {
+  return projects.reduce((total, project) => total + project.ratio, 0);
+}
+
+export function createMigratedProjectId(name: string, color: string): string {
+  return `project-${slugify(name)}-${color.replace("#", "").toLowerCase()}`;
+}
+
+export function getAssignedCellCount(task: TaskRecord): number {
+  return getCellIndicesForMinutes(task.assignedMinutes ?? []).length;
+}
+
+export function getEffectivePaintedCellCount(
+  day: DayRecord,
+  task: TaskRecord,
+): number {
+  return Array.from({ length: 48 }, (_, cellIndex) =>
+    getCellState(day.slots, cellIndex),
+  ).filter(
+    (cell) =>
+      cell.state === "colored" &&
+      cell.taskId === task.id &&
+      !cell.isMixed,
+  ).length;
+}
+
+function validateProjectName(name: string): string {
+  const trimmedName = name.trim();
+
+  if (!trimmedName) {
+    throw new Error("Project name is required.");
+  }
+
+  if (trimmedName.length > 80) {
+    throw new Error("Project name must be 80 characters or fewer.");
+  }
+
+  return trimmedName;
+}
+
+function validateProjectRatio(ratio: number): void {
+  if (!Number.isFinite(ratio) || ratio <= 0 || ratio > 100) {
+    throw new Error("Project ratio must be between 1 and 100.");
+  }
+}
+
+function getFallbackTaskColor(color?: string): string | null {
+  if (!color) {
+    return null;
+  }
+
+  return PROJECT_COLORS.find(
+    (projectColor) => projectColor.hex.toLowerCase() === color.toLowerCase(),
+  )?.hex ?? null;
+}
+
+function createProjectId(name: string, color: string): string {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return `${createMigratedProjectId(name, color)}-${Date.now()}`;
+}
+
+function slugify(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "") || "untitled";
+}

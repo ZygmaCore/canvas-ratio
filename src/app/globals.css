@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #fbfbf7;
+  --paper-line: rgba(47, 95, 191, 0.09);
+  --ink: #1a1a1a;
+  --sun: #ffd91a;
+  --sky: #6fb6ff;
+  --leaf: #8bcf3f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  color: var(--ink);
+  background:
+    linear-gradient(90deg, var(--paper-line) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(214, 40, 40, 0.08) 1px, transparent 1px),
+    var(--paper);
+  background-size: 38px 38px, 100% 38px, auto;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}

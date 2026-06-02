@@ -1,0 +1,48 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# next.js
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+.vercel/
+
+# production/build output
+build/
+dist/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# env
+.env
+.env*.local
+.env.development
+.env.test
+.env.production
+
+# os/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# tests/coverage
+coverage/
+test-results/
+playwright-report/
+.nyc_output/
+
+# local docker artifacts
+docker-data/
+*.pid

@@ -1,197 +1,162 @@
-import { expandMinuteRange } from "@/lib/blocks";
 import {
-  CELLS_PER_DAY,
-  MINUTES_PER_CELL,
   getBlackCellIndices,
   getColoredCellIndices,
   getWhiteCellIndices,
 } from "@/lib/cells";
-import {
-  getAssignedCellCount,
-  getEffectivePaintedCellCount,
-  getProjectRatioTotal,
-  getProjectUsageFromSlots,
-  getTaskProjectColor,
-  getTaskProjectName,
-  validateProjectRatios,
-} from "@/lib/projects";
-import { formatMinuteRange } from "@/lib/time";
+import { getProjectUsageFromSlots } from "@/lib/projects";
+import { getTaskEffectivePaintedMinutes } from "@/lib/tasks";
 import type {
   DayRecord,
-  JournalBlockSnapshot,
   JournalInputSnapshot,
   JournalRecord,
-  JournalSource,
-  TimeBlock,
 } from "@/types/canvas";
 
-export function buildJournalInputSnapshot(
-  day: DayRecord,
-): JournalInputSnapshot {
-  const projects = getProjectUsageFromSlots(day).map((usage) => ({
-    projectId: usage.projectId,
-    name: usage.projectName,
-    color: usage.color,
-    ratio: usage.ratio,
-    quotaCells: usage.quotaCells,
-    paintedCells: usage.paintedCells,
-    remainingCells: usage.remainingCells,
-  }));
-  const ratioValidation = validateProjectRatios(day.projects);
+export function buildJournalInputSnapshot(day: DayRecord): JournalInputSnapshot {
+  const slots = day.slots;
+  const blackCells = getBlackCellIndices(slots).length;
+  const whiteCells = getWhiteCellIndices(slots).length;
+  const coloredCells = getColoredCellIndices(slots).length;
+  const projectUsage = getProjectUsageFromSlots(day);
 
   return {
     date: day.date,
-    totalCells: CELLS_PER_DAY,
-    blackCells: getBlackCellIndices(day.slots).length,
-    whiteCells: getWhiteCellIndices(day.slots).length,
-    coloredCells: getColoredCellIndices(day.slots).length,
-    ratioTotal: getProjectRatioTotal(day.projects),
-    ratioReady: ratioValidation.valid,
-    projects,
+    totalCells: 48,
+    blackCells,
+    whiteCells,
+    coloredCells,
+    projects: projectUsage.map((usage) => ({
+      projectId: usage.projectId,
+      name: usage.projectName,
+      color: usage.color,
+      ratio: usage.ratio,
+      quotaCells: usage.quotaCells,
+      paintedCells: usage.paintedCells,
+      remainingCells: usage.remainingCells,
+    })),
     tasks: day.tasks.map((task) => ({
       taskId: task.id,
       projectId: task.projectId,
-      projectName: getTaskProjectName(day, task),
+      projectName: task.projectName,
       taskName: task.taskName,
-      color: getTaskProjectColor(day, task),
-      assignedCells: getAssignedCellCount(task),
-      effectivePaintedCells: getEffectivePaintedCellCount(day, task),
+      color: task.color,
+      assignedCells: Math.ceil((task.assignedMinutes?.length || 0) / 30),
+      effectivePaintedCells: Math.ceil(getTaskEffectivePaintedMinutes(slots, task.id) / 30),
       description: task.description,
     })),
-    sleepBlocks: day.sleepBlocks.map(createBlockSnapshot),
-    randomEventBlocks: day.randomEventBlocks.map(createBlockSnapshot),
+    sleepBlocks: day.sleepBlocks.map((block) => ({
+      title: block.title,
+      startMinute: block.startMinute,
+      endMinute: block.endMinute,
+      description: block.description,
+    })),
+    randomEventBlocks: day.randomEventBlocks.map((block) => ({
+      title: block.title,
+      startMinute: block.startMinute,
+      endMinute: block.endMinute,
+      description: block.description,
+    })),
   };
 }
 
 export function buildJournalPrompt(snapshot: JournalInputSnapshot): string {
-  return [
-    "Tulis jurnal harian dalam Bahasa Indonesia berdasarkan snapshot Canvas Ratio berikut.",
-    "Gaya: hangat, sederhana, dan jernih. Gunakan 2 sampai 5 paragraf pendek.",
-    "Jangan membuat-buat tugas, kejadian, atau emosi yang tidak ada di data.",
-    "Boleh memberi refleksi ringan hanya jika langsung berdasarkan data.",
-    "Sebutkan area fokus, waktu hitam, waktu putih/free, dan progres tugas bila datanya ada.",
-    "AI is a journal writer only. Do not modify the user's plan, ratios, tasks, or canvas.",
-    "Kembalikan teks jurnal saja, tanpa tabel markdown dan tanpa JSON.",
-    "",
-    "Snapshot ringkas tanpa raw slots:",
-    JSON.stringify(snapshot, null, 2),
-  ].join("\n");
+  const projectList = snapshot.projects
+    .map(
+      (p) =>
+        `- ${p.name}: Target ${p.ratio}%, Painted ${p.paintedCells}/${p.quotaCells} cells`,
+    )
+    .join("\n");
+
+  const taskList = snapshot.tasks
+    .filter((t) => t.assignedCells > 0)
+    .map(
+      (t) =>
+        `- ${t.taskName} (${t.projectName || "No Project"}): ${t.effectivePaintedCells}/${t.assignedCells} cells finished`,
+    )
+    .join("\n");
+
+  const blackBlocks = [...snapshot.sleepBlocks, ...snapshot.randomEventBlocks]
+    .map((b) => `- ${b.title} (${b.description || "No description"})`)
+    .join("\n");
+
+  return `
+Tulis jurnal harian berdasarkan data canvas berikut untuk tanggal ${snapshot.date}.
+
+Ringkasan Canvas:
+- Total: 48 cell (24 jam)
+- Terisi Proyek/Tugas: ${snapshot.coloredCells} cell
+- Terhalang (Black): ${snapshot.blackCells} cell
+- Kosong (Free): ${snapshot.whiteCells} cell
+
+Proyek:
+${projectList || "Tidak ada proyek."}
+
+Tugas:
+${taskList || "Tidak ada tugas."}
+
+Blok Waktu Terhalang (Tidur/Event):
+${blackBlocks || "Tidak ada blok waktu terhalang."}
+
+Aturan Penulisan:
+- Bahasa: Indonesia.
+- Gaya: Reflektif, sederhana, hangat.
+- Hindari gaya korporat atau tabel markdown.
+- Jangan mengada-ada kejadian yang tidak ada di data.
+- Berikan saran hanya jika benar-benar berdasarkan data (misal: terlalu banyak free time atau target rasio tidak tercapai).
+- Jangan menghakimi (no shame).
+- Sebutkan fokus dominan hari ini.
+- Sebutkan gangguan/tidur jika ada.
+- Sebutkan waktu luang jika relevan.
+- AI hanya penulis jurnal. Jangan mengubah rasio, project, task, warna, slot canvas, atau prioritas user.
+  `.trim();
 }
 
 export function generateMockJournal(snapshot: JournalInputSnapshot): string {
-  const dominantProject = getDominantPaintedProject(snapshot);
-  const paintedTasks = snapshot.tasks.filter(
-    (task) => task.effectivePaintedCells > 0,
-  );
-  const blackSummary = [
-    snapshot.blackCells > 0
-      ? `${formatCells(snapshot.blackCells)} menjadi kanvas hitam`
-      : "tidak ada kanvas hitam",
-    snapshot.sleepBlocks.length > 0
-      ? `${snapshot.sleepBlocks.length} catatan tidur`
-      : null,
-    snapshot.randomEventBlocks.length > 0
-      ? `${snapshot.randomEventBlocks.length} random event`
-      : null,
-  ]
-    .filter(Boolean)
-    .join(", ");
-
-  const opening =
-    snapshot.coloredCells > 0 && dominantProject
-      ? `Pada ${snapshot.date}, bagian paling terlihat dari kanvas adalah ${dominantProject.name} dengan ${formatCells(dominantProject.paintedCells)} yang sudah diwarnai.`
-      : `Pada ${snapshot.date}, kanvas masih terasa lapang karena belum banyak waktu yang diwarnai.`;
-
-  const canvasLine = `Catatan waktunya sederhana: ${blackSummary}, ${formatCells(snapshot.whiteCells)} masih putih/free, dan ${formatCells(snapshot.coloredCells)} sudah menjadi warna proyek.`;
-
-  const taskLine =
-    paintedTasks.length > 0
-      ? `Progres tugas yang tampak: ${paintedTasks
-          .slice(0, 4)
-          .map(
-            (task) =>
-              `${task.taskName} (${formatCells(task.effectivePaintedCells)})`,
-          )
-          .join(", ")}.`
-      : "Belum ada tugas berwarna yang terlihat di kanvas, jadi jurnal ini mencatat ruang yang masih terbuka.";
-
-  const closing =
-    snapshot.ratioReady
-      ? "Rasio proyek sudah lengkap, sehingga cerita hari ini mengikuti batas yang sudah dipilih."
-      : `Rasio proyek belum lengkap (${snapshot.ratioTotal}/100), jadi tulisan ini hanya membaca jejak kanvas yang ada.`;
-
-  return [opening, canvasLine, taskLine, closing].join("\n\n");
-}
-
-export function createJournalRecord(input: {
-  date: string;
-  content: string;
-  summary?: string;
-  model?: string;
-  source: JournalSource;
-  inputSnapshot: JournalInputSnapshot;
-}): JournalRecord {
-  return {
-    id: createJournalId(),
-    date: input.date,
-    content: input.content.trim(),
-    summary: input.summary?.trim() || undefined,
-    model: input.model?.trim() || undefined,
-    source: input.source,
-    inputSnapshot: input.inputSnapshot,
-    createdAt: new Date().toISOString(),
-  };
-}
-
-export function createJournalSummary(content: string): string {
-  return (
-    content
-      .split(/\n+/)
-      .map((line) => line.trim())
-      .find(Boolean)
-      ?.slice(0, 180) ?? "Journal generated from Canvas Ratio snapshot."
-  );
-}
-
-function createBlockSnapshot(block: TimeBlock): JournalBlockSnapshot {
-  return {
-    title: block.title,
-    startMinute: block.startMinute,
-    endMinute: block.endMinute,
-    durationMinutes: expandMinuteRange(block.startMinute, block.endMinute)
-      .length,
-    description:
-      block.description ||
-      `${formatMinuteRange(block.startMinute, block.endMinute)} unavailable`,
-  };
-}
-
-function getDominantPaintedProject(snapshot: JournalInputSnapshot) {
-  return [...snapshot.projects]
-    .filter((project) => project.paintedCells > 0)
-    .sort((firstProject, secondProject) => {
-      if (secondProject.paintedCells !== firstProject.paintedCells) {
-        return secondProject.paintedCells - firstProject.paintedCells;
-      }
-
-      return firstProject.name.localeCompare(secondProject.name);
-    })[0];
-}
-
-function formatCells(cells: number): string {
-  const minutes = cells * MINUTES_PER_CELL;
-  const hours = minutes / 60;
-  const hourLabel = Number.isInteger(hours)
-    ? `${hours} jam`
-    : `${Math.round(hours * 10) / 10} jam`;
-
-  return `${cells} sel (${hourLabel})`;
-}
-
-function createJournalId(): string {
-  if (globalThis.crypto?.randomUUID) {
-    return globalThis.crypto.randomUUID();
+  const dominantProject = [...snapshot.projects].sort(
+    (a, b) => b.paintedCells - a.paintedCells,
+  )[0];
+  
+  let journal = `Jurnal untuk ${snapshot.date}.\n\n`;
+  
+  if (snapshot.coloredCells === 0 && snapshot.blackCells === 0) {
+    journal += "Hari ini canvas tampak sangat bersih, hampir tidak ada yang dicat. Waktu yang tersedia masih sangat lapang.";
+  } else {
+    if (dominantProject && dominantProject.paintedCells > 0) {
+      journal += `Hari ini fokus utamanya adalah pada ${dominantProject.name}. `;
+    }
+    
+    if (snapshot.blackCells > 0) {
+      journal += `Ada sekitar ${Math.round((snapshot.blackCells * 30) / 60)} jam yang digunakan untuk istirahat atau hal lain yang tidak bisa diganggu. `;
+    }
+    
+    if (snapshot.whiteCells > 5) {
+      journal += `Masih ada cukup banyak waktu luang (${Math.round((snapshot.whiteCells * 30) / 60)} jam) untuk bernapas hari ini. `;
+    }
+    
+    if (snapshot.tasks.length > 0) {
+      const finishedTasks = snapshot.tasks.filter(t => t.effectivePaintedCells > 0).length;
+      journal += `Ada ${finishedTasks} tugas yang berhasil dikerjakan sebagian atau seluruhnya.`;
+    }
   }
 
-  return `journal-${Date.now()}`;
+  return journal;
+}
+
+export function createJournalRecord(params: {
+  date: string;
+  content: string;
+  source: "ai" | "mock";
+  model?: string;
+  warning?: string;
+  inputSnapshot?: JournalInputSnapshot;
+}): JournalRecord {
+  return {
+    id: `journal-${params.date}-${Date.now()}`,
+    date: params.date,
+    content: params.content,
+    source: params.source,
+    model: params.model,
+    warning: params.warning,
+    createdAt: new Date().toISOString(),
+    inputSnapshot: params.inputSnapshot,
+  };
 }

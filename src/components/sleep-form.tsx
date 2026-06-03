@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { InlineMessage } from "@/components/inline-message";
 import { TimeRangeInput } from "@/components/time-range-input";
 import { parseTimeToMinute } from "@/lib/time";
 
@@ -85,9 +86,9 @@ export function SleepForm({ disabled = false, onAddSleep }: SleepFormProps) {
       </label>
 
       {error ? (
-        <p className="mt-3 border-2 border-[#1A1A1A] bg-[#FFD7BF] px-3 py-2 text-sm font-black">
+        <InlineMessage type="error" className="mt-3">
           {error}
-        </p>
+        </InlineMessage>
       ) : null}
 
       <button

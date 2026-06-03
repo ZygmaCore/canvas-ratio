@@ -7,7 +7,7 @@ import {
   isDayEditable,
   type DayStatus,
 } from "@/lib/day";
-import { ensureDayRecord, saveDayRecord } from "@/lib/storage";
+import { ensureDayRecord, loadDayRecord, saveDayRecord } from "@/lib/storage";
 import type { DayRecord } from "@/types/canvas";
 
 type UseDayRecordResult = {
@@ -17,6 +17,7 @@ type UseDayRecordResult = {
   loading: boolean;
   saveDay: (nextDay: DayRecord) => void;
   resetDay: () => void;
+  importDay: (importedDay: DayRecord) => void;
 };
 
 export function useDayRecord(dateKey: string): UseDayRecordResult {
@@ -35,7 +36,13 @@ export function useDayRecord(dateKey: string): UseDayRecordResult {
       return;
     }
 
-    setDay(ensureDayRecord(dateKey));
+    if (status === "today") {
+      setDay(ensureDayRecord(dateKey));
+      setLoading(false);
+      return;
+    }
+
+    setDay(loadDayRecord(dateKey));
     setLoading(false);
   }, [dateKey, status]);
 
@@ -67,6 +74,15 @@ export function useDayRecord(dateKey: string): UseDayRecordResult {
     setDay(emptyDay);
   }, [dateKey, day]);
 
+  const importDay = useCallback(
+    (importedDay: DayRecord) => {
+      if (importedDay.date === dateKey) {
+        setDay(importedDay);
+      }
+    },
+    [dateKey],
+  );
+
   return {
     day,
     status,
@@ -74,5 +90,6 @@ export function useDayRecord(dateKey: string): UseDayRecordResult {
     loading,
     saveDay,
     resetDay,
+    importDay,
   };
 }

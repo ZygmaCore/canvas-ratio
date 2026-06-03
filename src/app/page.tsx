@@ -10,7 +10,7 @@ import {
 const tutorialCards = [
   {
     title: "White Canvas",
-    description: "Free time that can still become anything.",
+    description: "Free/unpainted time.",
     swatchColor: WHITE_CANVAS.hex,
   },
   {
@@ -19,14 +19,24 @@ const tutorialCards = [
     swatchColor: BLACK_CANVAS.hex,
   },
   {
-    title: "Colored Canvas",
-    description: "Projects and tasks you choose for the day.",
+    title: "Colored Projects",
+    description: "Projects use ratios like 50/30/20.",
     swatchColor: PROJECT_COLORS[2].hex,
   },
   {
-    title: "Finish the Day",
-    description: "Generate a warm AI or mock journal.",
+    title: "Paint in Cells",
+    description: "Each cell is 30 minutes.",
     swatchColor: PROJECT_COLORS[5].hex,
+  },
+  {
+    title: "Pomodoro",
+    description: "Automatic 25/5 rhythm from the clock.",
+    swatchColor: PROJECT_COLORS[1].hex,
+  },
+  {
+    title: "Finish the Day",
+    description: "Write a journal and generate a pixel story.",
+    swatchColor: PROJECT_COLORS[7].hex,
   },
 ];
 
@@ -44,7 +54,7 @@ export default function LandingPage() {
             className="mb-5 h-28 w-28 rounded-full border-2 border-[#1A1A1A] bg-white object-cover shadow-[4px_4px_0_#1A1A1A] sm:h-32 sm:w-32"
           />
           <p className="mb-4 inline-flex border border-[#1A1A1A] bg-[#FFD91A] px-3 py-1 text-sm font-bold uppercase tracking-wide">
-            Day 7 MVP
+            local-first visual time allocation
           </p>
           <h1 className="text-5xl font-black leading-tight sm:text-6xl lg:text-7xl">
             Canvas Ratio
@@ -52,6 +62,12 @@ export default function LandingPage() {
           <p className="mt-5 max-w-xl text-xl font-medium leading-8 text-[#323232]">
             A drawing-book approach to daily time allocation.
           </p>
+          <ul className="mt-5 grid max-w-xl gap-2 text-base font-bold leading-7 text-[#323232]">
+            <li>Your day is a canvas.</li>
+            <li>White is free time, black is unavailable time, and colors are projects and tasks.</li>
+            <li>Project ratios divide only the non-black canvas.</li>
+            <li>Paint your day in 30-minute cells.</li>
+          </ul>
           <Link
             href="/canvas"
             className="mt-8 inline-flex min-h-12 items-center justify-center border-2 border-[#1A1A1A] bg-[#FF6A2A] px-6 py-3 text-base font-black text-white shadow-[4px_4px_0_#1A1A1A] transition hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#1A1A1A] focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]"
@@ -78,7 +94,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 pb-8 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-4 pb-8 sm:grid-cols-2 lg:grid-cols-3">
         {tutorialCards.map((card) => (
           <TutorialCard
             key={card.title}

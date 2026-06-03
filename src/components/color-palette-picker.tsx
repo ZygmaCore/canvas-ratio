@@ -24,7 +24,7 @@ export function ColorPalettePicker({
             type="button"
             disabled={disabled}
             onClick={() => onChange(color.hex)}
-            aria-label={color.name}
+            aria-label={`Project color ${color.name} ${color.hex}`}
             title={color.name}
             className={`aspect-square min-h-10 border-2 border-[#1A1A1A] transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:cursor-not-allowed ${
               selected

@@ -19,6 +19,7 @@ html {
 
 body {
   min-height: 100vh;
+  overflow-x: hidden;
   color: var(--ink);
   background:
     linear-gradient(90deg, var(--paper-line) 1px, transparent 1px),

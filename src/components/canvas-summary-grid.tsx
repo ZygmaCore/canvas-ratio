@@ -5,12 +5,14 @@ type CanvasSummaryGridProps = {
   amSummary: CanvasSummary;
   pmSummary: CanvasSummary;
   fullDaySummary: CanvasSummary;
+  compact?: boolean;
 };
 
 export function CanvasSummaryGrid({
   amSummary,
   pmSummary,
   fullDaySummary,
+  compact = false,
 }: CanvasSummaryGridProps) {
   const summaryItems = [
     {
@@ -36,7 +38,13 @@ export function CanvasSummaryGrid({
   ];
 
   return (
-    <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <section
+      className={
+        compact
+          ? "grid gap-3 sm:grid-cols-2"
+          : "grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+      }
+    >
       {summaryItems.map((item) => (
         <SummaryCard
           key={item.label}

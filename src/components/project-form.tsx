@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { ColorPalettePicker } from "@/components/color-palette-picker";
+import { InlineMessage } from "@/components/inline-message";
 import { PROJECT_COLORS } from "@/lib/palette";
 import {
   createProjectRecord,
@@ -116,6 +117,7 @@ export function ProjectForm({
             type="number"
             min="1"
             max="100"
+            step="1"
             value={ratio}
             disabled={disabled}
             data-testid="project-ratio"
@@ -155,19 +157,16 @@ export function ProjectForm({
       </label>
 
       {totalRatio !== 100 ? (
-        <p className="mt-3 border-2 border-[#1A1A1A] bg-[#FFD7BF] px-3 py-2 text-sm font-black">
+        <InlineMessage type="warning" className="mt-3">
           Project ratios must total 100 before painting. Next total would be{" "}
           {Number.isFinite(nextTotalRatio) ? nextTotalRatio : totalRatio}/100.
-        </p>
+        </InlineMessage>
       ) : null}
 
       {error ? (
-        <p
-          data-testid="project-error"
-          className="mt-3 border-2 border-[#1A1A1A] bg-[#FFD7BF] px-3 py-2 text-sm font-black"
-        >
+        <InlineMessage type="error" className="mt-3">
           {error}
-        </p>
+        </InlineMessage>
       ) : null}
 
       <button

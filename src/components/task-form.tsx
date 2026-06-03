@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { InlineMessage } from "@/components/inline-message";
 import { getCellIndicesForMinutes } from "@/lib/cells";
 import {
   assignMinutesByCellIndices,
@@ -126,7 +127,7 @@ export function TaskForm({
         endMinute:
           inputMode === "time-range" ? parseTimeToMinute(endValue) : undefined,
         durationMinutes:
-          inputMode === "duration" ? getDurationMinutes() : undefined,
+          inputMode === "duration" ? assignedCellCount * 30 : undefined,
       });
 
       setTaskName("");
@@ -204,15 +205,15 @@ export function TaskForm({
       </div>
 
       {projects.length === 0 ? (
-        <p className="mt-4 border-2 border-[#1A1A1A] bg-[#FFD7BF] px-4 py-3 text-sm font-black">
-          Create projects and ratios first.
-        </p>
+        <InlineMessage type="warning" className="mt-4">
+          Create projects first. Ratios must total 100 before painting.
+        </InlineMessage>
       ) : null}
 
       {!quotaReady && projects.length > 0 ? (
-        <p className="mt-4 border-2 border-[#1A1A1A] bg-[#FFD7BF] px-4 py-3 text-sm font-black">
+        <InlineMessage type="warning" className="mt-4">
           Project ratios must total 100 before painting.
-        </p>
+        </InlineMessage>
       ) : null}
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -354,6 +355,7 @@ export function TaskForm({
             type="number"
             min="1"
             max="100"
+            step="1"
             value={ratio}
             disabled={formDisabled}
             data-testid="task-ratio"
@@ -400,7 +402,8 @@ export function TaskForm({
       ) : null}
 
       <p className="mt-3 text-sm font-bold text-[#4a4a4a]">
-        Canvas painting is rounded to 30-minute cells.
+        Canvas painting uses 30-minute cells. Duration mode rounds up to the
+        next full cell; time ranges must align to 30-minute boundaries.
       </p>
 
       <label className="mt-4 block">
@@ -419,12 +422,9 @@ export function TaskForm({
       </label>
 
       {error ? (
-        <p
-          data-testid="task-error"
-          className="mt-3 border-2 border-[#1A1A1A] bg-[#FFD7BF] px-3 py-2 text-sm font-black"
-        >
+        <InlineMessage type="error" className="mt-3">
           {error}
-        </p>
+        </InlineMessage>
       ) : null}
 
       <button

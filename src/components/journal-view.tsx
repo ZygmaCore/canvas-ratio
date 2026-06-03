@@ -1,3 +1,6 @@
+"use client";
+
+import { InlineMessage } from "@/components/inline-message";
 import type { JournalRecord } from "@/types/canvas";
 
 type JournalViewProps = {
@@ -7,61 +10,50 @@ type JournalViewProps = {
 export function JournalView({ journal }: JournalViewProps) {
   if (!journal) {
     return (
-      <section className="rounded-lg border-2 border-dashed border-[#1A1A1A] bg-[#FBFBF7] p-5">
-        <h2 className="text-2xl font-black">Journal</h2>
-        <p className="mt-3 text-sm font-bold text-[#4a4a4a]">
-          No journal yet. Finish coloring to write today’s story.
+      <div className="flex h-full min-h-[200px] flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#1A1A1A] p-6 text-center">
+        <p className="text-sm font-bold text-[#4a4a4a]">
+          No journal yet. Finish coloring to write today's story.
         </p>
-      </section>
+      </div>
     );
   }
 
-  const source = journal.source ?? "mock";
-  const sourceLabel = source === "ai" ? "AI" : "Mock";
-
   return (
-    <section className="rounded-lg border-2 border-[#1A1A1A] bg-[#FBFBF7] p-5 shadow-[4px_4px_0_#1A1A1A]">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-black">Journal</h2>
-          <p className="mt-1 text-sm font-bold text-[#4a4a4a]">
-            {journal.date} · Created {formatCreatedAt(journal.createdAt)}
+    <div className="h-full rounded-lg border-2 border-[#1A1A1A] bg-white p-6 shadow-[4px_4px_0_#1A1A1A]">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-xl font-black">Daily Journal</h3>
+        <span className="text-xs font-bold text-[#4a4a4a]">
+          {new Date(journal.createdAt).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </span>
+      </div>
+      
+      <div className="prose prose-sm max-w-none">
+        {journal.content.split("\n").map((line, i) => (
+          <p key={i} className="mb-3 text-sm font-medium leading-relaxed text-[#323232]">
+            {line}
           </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <span className="border-2 border-[#1A1A1A] bg-[#FFD91A] px-3 py-1 text-xs font-black uppercase">
-            {sourceLabel}
+        ))}
+      </div>
+
+      <div className="mt-6 flex flex-wrap gap-2 border-t-2 border-[#1A1A1A] pt-4">
+        <span className={`inline-flex items-center border-2 border-[#1A1A1A] px-2 py-0.5 text-[10px] font-black uppercase ${journal.source === 'ai' ? 'bg-[#6FB6FF]' : 'bg-[#FFD91A]'}`}>
+          Source: {journal.source === 'ai' ? 'AI' : 'Mock Fallback'}
+        </span>
+        {journal.model && (
+          <span className="inline-flex items-center border-2 border-[#1A1A1A] bg-white px-2 py-0.5 text-[10px] font-black uppercase">
+            Model: {journal.model}
           </span>
-          {journal.model ? (
-            <span className="border-2 border-[#1A1A1A] bg-white px-3 py-1 text-xs font-black">
-              {journal.model}
-            </span>
-          ) : null}
-        </div>
+        )}
       </div>
 
-      {journal.summary ? (
-        <p className="mt-5 border-l-4 border-[#2F5FBF] bg-white px-4 py-3 text-sm font-black leading-6">
-          {journal.summary}
-        </p>
+      {journal.warning ? (
+        <InlineMessage type="warning" className="mt-4">
+          Warning: {journal.warning}
+        </InlineMessage>
       ) : null}
-
-      <div className="mt-5 whitespace-pre-line text-base font-medium leading-8 text-[#222222]">
-        {journal.content}
-      </div>
-    </section>
+    </div>
   );
-}
-
-function formatCreatedAt(value: string): string {
-  const createdAt = new Date(value);
-
-  if (Number.isNaN(createdAt.getTime())) {
-    return value;
-  }
-
-  return createdAt.toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
 }

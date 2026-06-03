@@ -1,4 +1,5 @@
 import { expandMinuteRange } from "@/lib/blocks";
+import { InlineMessage } from "@/components/inline-message";
 import { BLACK_CANVAS } from "@/lib/palette";
 import { formatMinuteRange } from "@/lib/time";
 import type { TimeBlock } from "@/types/canvas";
@@ -35,9 +36,9 @@ export function BlackBlockList({
       </div>
 
       {!hasBlocks ? (
-        <p className="mt-4 border-2 border-[#1A1A1A] bg-[#FFD7BF] px-4 py-3 text-sm font-black">
+        <InlineMessage type="warning" className="mt-4">
           No black canvas blocks yet.
-        </p>
+        </InlineMessage>
       ) : null}
 
       <BlockSection

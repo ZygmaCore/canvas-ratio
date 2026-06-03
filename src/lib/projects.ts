@@ -38,13 +38,13 @@ export type ProjectUsage = ProjectQuota & {
 export function createProjectRecord(input: ProjectRecordInput): ProjectRecord {
   const name = validateProjectName(input.name);
   const color = validateProjectColor(input.color);
-  validateProjectRatio(input.ratio);
+  const ratio = validateProjectRatio(input.ratio);
 
   return {
     id: createProjectId(name, color),
     name,
     color,
-    ratio: input.ratio,
+    ratio,
     description: input.description?.trim() || undefined,
     createdAt: new Date().toISOString(),
   };
@@ -292,10 +292,12 @@ function validateProjectName(name: string): string {
   return trimmedName;
 }
 
-function validateProjectRatio(ratio: number): void {
-  if (!Number.isFinite(ratio) || ratio <= 0 || ratio > 100) {
-    throw new Error("Project ratio must be between 1 and 100.");
+function validateProjectRatio(ratio: number): number {
+  if (!Number.isInteger(ratio) || ratio <= 0 || ratio > 100) {
+    throw new Error("Project ratio must be a whole number between 1 and 100.");
   }
+
+  return ratio;
 }
 
 function getFallbackTaskColor(color?: string): string | null {

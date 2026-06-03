@@ -4,6 +4,7 @@ import {
   getTaskProjectColor,
   getTaskProjectName,
 } from "@/lib/projects";
+import { InlineMessage } from "@/components/inline-message";
 import { formatMinuteRange } from "@/lib/time";
 import type {
   DayRecord,
@@ -53,9 +54,9 @@ export function TaskList({
       </div>
 
       {tasks.length === 0 ? (
-        <p className="mt-4 border-2 border-[#1A1A1A] bg-[#FFD7BF] px-4 py-3 text-sm font-black">
+        <InlineMessage type="warning" className="mt-4">
           No painted tasks yet.
-        </p>
+        </InlineMessage>
       ) : null}
 
       <div className="mt-4 grid gap-3">
@@ -144,10 +145,10 @@ function TaskCard({
           </div>
 
           {coveredCells > 0 ? (
-            <p className="mt-3 border-2 border-[#1A1A1A] bg-[#FFD91A] px-3 py-2 text-sm font-black">
+            <InlineMessage type="warning" className="mt-3">
               Partially covered by black canvas. {coveredCells} cell
               {coveredCells === 1 ? "" : "s"} hidden.
-            </p>
+            </InlineMessage>
           ) : null}
 
           {task.description ? (

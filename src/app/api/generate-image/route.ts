@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateGeminiText, getGeminiApiKey } from "@/lib/google-ai";
+import { generateGeminiImage, getGeminiApiKey } from "@/lib/google-ai";
 import {
-  buildJournalPrompt,
-  createJournalRecord,
-  generateMockJournal,
-} from "@/lib/journal";
-import { JournalInputSnapshot } from "@/types/canvas";
+  buildImagePrompt,
+  generateMockPixelStory,
+} from "@/lib/image-story";
+import { ImageInputSnapshot } from "@/types/canvas";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { snapshot } = body as { snapshot: JournalInputSnapshot };
+    const { snapshot } = body as { snapshot: ImageInputSnapshot };
 
     if (!snapshot || !snapshot.date) {
       return NextResponse.json(
@@ -19,38 +18,49 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const prompt = buildJournalPrompt(snapshot);
+    if (!snapshot.journalContent) {
+      return NextResponse.json(
+        { error: "Journal content is required for image generation" },
+        { status: 400 }
+      );
+    }
+
+    const prompt = buildImagePrompt(snapshot);
     const apiKey = getGeminiApiKey();
 
     if (!apiKey) {
-      const mockContent = generateMockJournal(snapshot);
+      const mockDataUrl = generateMockPixelStory(snapshot);
       return NextResponse.json({
         source: "mock",
-        content: mockContent,
+        prompt,
+        dataUrl: mockDataUrl,
         createdAt: new Date().toISOString(),
       });
     }
 
     try {
-      const { content, model } = await generateGeminiText({ prompt });
+      const { dataUrl, imageUrl, model } = await generateGeminiImage({ prompt });
       return NextResponse.json({
         source: "ai",
         model,
-        content,
+        prompt,
+        dataUrl,
+        imageUrl,
         createdAt: new Date().toISOString(),
       });
     } catch (error: any) {
-      console.error("Gemini Journal Error:", error);
-      const mockContent = generateMockJournal(snapshot);
+      console.error("Gemini Image Error:", error);
+      const mockDataUrl = generateMockPixelStory(snapshot);
       return NextResponse.json({
         source: "mock",
-        content: mockContent,
+        prompt,
+        dataUrl: mockDataUrl,
         warning: `Gemini failed: ${error.message}. Using mock fallback.`,
         createdAt: new Date().toISOString(),
       });
     }
   } catch (error) {
-    console.error("API Journal Route Error:", error);
+    console.error("API Generate Image Route Error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

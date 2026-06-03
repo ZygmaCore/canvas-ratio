@@ -18,21 +18,30 @@ import type { DayRecord, PomodoroState } from "@/types/canvas";
 type PomodoroPanelProps = {
   day: DayRecord | null;
   readOnly?: boolean;
+  compact?: boolean;
 };
 
-export function PomodoroPanel({ day, readOnly = false }: PomodoroPanelProps) {
-  const [now, setNow] = useState(() => new Date());
+export function PomodoroPanel({
+  day,
+  readOnly = false,
+  compact = false,
+}: PomodoroPanelProps) {
+  const [now, setNow] = useState<Date | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const previousPhaseRef = useRef<PomodoroState["phase"] | null>(null);
   const initializedRef = useRef(false);
-  const pomodoroState = getPomodoroState(now);
+  const pomodoroState = now ? getPomodoroState(now) : null;
   const sessions = useMemo(() => getPomodoroSessionsForDay(), []);
-  const activeTask = day ? getCurrentActiveTask(day, now) : null;
-  const upcomingQueue = day ? getUpcomingTaskQueue(day, now, 5) : [];
-  const currentCellIndex = minuteToCellIndex(getMinutesSinceMidnight(now));
-  const currentCell = day ? getCellState(day.slots, currentCellIndex) : null;
+  const activeTask = day && now ? getCurrentActiveTask(day, now) : null;
+  const upcomingQueue = day && now ? getUpcomingTaskQueue(day, now, 5) : [];
+  const currentCellIndex = now
+    ? minuteToCellIndex(getMinutesSinceMidnight(now))
+    : 0;
+  const currentCell = day && now ? getCellState(day.slots, currentCellIndex) : null;
 
   useEffect(() => {
+    setNow(new Date());
+
     const intervalId = window.setInterval(() => {
       setNow(new Date());
     }, 1000);
@@ -41,6 +50,10 @@ export function PomodoroPanel({ day, readOnly = false }: PomodoroPanelProps) {
   }, []);
 
   useEffect(() => {
+    if (!pomodoroState) {
+      return;
+    }
+
     if (!initializedRef.current) {
       initializedRef.current = true;
       previousPhaseRef.current = pomodoroState.phase;
@@ -54,13 +67,15 @@ export function PomodoroPanel({ day, readOnly = false }: PomodoroPanelProps) {
         playBeep();
       }
     }
-  }, [pomodoroState.phase, soundEnabled]);
+  }, [pomodoroState?.phase, soundEnabled]);
 
   return (
     <section className="rounded-lg border-2 border-[#1A1A1A] bg-white p-5 shadow-[4px_4px_0_#1A1A1A]">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-2xl font-black">Automatic Pomodoro</h2>
+          <h2 className={compact ? "text-xl font-black" : "text-2xl font-black"}>
+            Automatic Pomodoro
+          </h2>
           <p className="mt-1 text-sm font-bold">
             Clock-based 25/5 sessions from 00:00. No start or stop.
           </p>
@@ -75,23 +90,27 @@ export function PomodoroPanel({ day, readOnly = false }: PomodoroPanelProps) {
         </button>
       </div>
 
-      <div className="mt-5 grid gap-4 md:grid-cols-3">
+      <div className={compact ? "mt-5 grid gap-4" : "mt-5 grid gap-4 md:grid-cols-3"}>
         <div className="border-2 border-[#1A1A1A] bg-[#FBFBF7] p-4">
           <p className="text-xs font-black uppercase text-[#2F5FBF]">
             Current phase
           </p>
           <p className="mt-2 text-3xl font-black capitalize">
-            {pomodoroState.phase}
+            {pomodoroState?.phase ?? "Syncing"}
           </p>
           <p className="mt-1 text-2xl font-black text-[#D62828]">
-            {formatSeconds(pomodoroState.remainingSeconds)}
+            {pomodoroState ? formatSeconds(pomodoroState.remainingSeconds) : "--:--"}
           </p>
           <p className="mt-2 text-sm font-bold">
-            Session {pomodoroState.cycleIndex + 1} / 48
+            Session {pomodoroState ? pomodoroState.cycleIndex + 1 : "-"} / 48
           </p>
         </div>
 
-        <div className="border-2 border-[#1A1A1A] bg-[#FBFBF7] p-4 md:col-span-2">
+        <div
+          className={`border-2 border-[#1A1A1A] bg-[#FBFBF7] p-4 ${
+            compact ? "" : "md:col-span-2"
+          }`}
+        >
           <p className="text-xs font-black uppercase text-[#2F5FBF]">
             Current Active Task
           </p>
@@ -99,8 +118,8 @@ export function PomodoroPanel({ day, readOnly = false }: PomodoroPanelProps) {
             day={day}
             activeTask={activeTask}
             currentCell={currentCell}
-            phase={pomodoroState.phase}
-            currentCellLabel={getCurrentCellLabel(now)}
+            phase={pomodoroState?.phase ?? null}
+            currentCellLabel={now ? getCurrentCellLabel(now) : "syncing clock"}
           />
           {readOnly ? (
             <p className="mt-2 text-xs font-bold text-[#4a4a4a]">
@@ -110,7 +129,13 @@ export function PomodoroPanel({ day, readOnly = false }: PomodoroPanelProps) {
         </div>
       </div>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
+      <div
+        className={
+          compact
+            ? "mt-5 grid gap-4"
+            : "mt-5 grid gap-4 lg:grid-cols-[0.8fr_1.2fr]"
+        }
+      >
         <div className="border-2 border-[#1A1A1A] bg-[#FBFBF7] p-4">
           <h3 className="text-lg font-black">Upcoming Queue Preview</h3>
           {upcomingQueue.length === 0 ? (
@@ -144,9 +169,13 @@ export function PomodoroPanel({ day, readOnly = false }: PomodoroPanelProps) {
 
         <div className="border-2 border-[#1A1A1A] bg-[#FBFBF7] p-4">
           <h3 className="text-lg font-black">Urutan Sesi Hari Ini</h3>
-          <div className="mt-3 grid max-h-72 grid-cols-4 gap-2 overflow-y-auto pr-1 sm:grid-cols-6 md:grid-cols-8">
+          <div
+            className={`mt-3 grid max-h-72 gap-2 overflow-y-auto pr-1 ${
+              compact ? "grid-cols-3 sm:grid-cols-4" : "grid-cols-4 sm:grid-cols-6 md:grid-cols-8"
+            }`}
+          >
             {sessions.map((session) => {
-              const active = session.index === pomodoroState.cycleIndex;
+              const active = session.index === pomodoroState?.cycleIndex;
               const { startMinute, endMinute } = cellIndexToMinuteRange(
                 session.index,
               );
@@ -182,9 +211,13 @@ function ActiveTaskText({
   day: DayRecord | null;
   activeTask: ReturnType<typeof getCurrentActiveTask>;
   currentCell: ReturnType<typeof getCellState> | null;
-  phase: PomodoroState["phase"];
+  phase: PomodoroState["phase"] | null;
   currentCellLabel: string;
 }) {
+  if (!phase) {
+    return <p className="mt-2 text-xl font-black">Syncing real clock.</p>;
+  }
+
   if (phase === "break") {
     return (
       <p className="mt-2 text-xl font-black">
@@ -200,7 +233,15 @@ function ActiveTaskText({
   if (currentCell.state === "black") {
     return (
       <p className="mt-2 text-xl font-black">
-        Black canvas / unavailable / {currentCellLabel}
+        Current active task: Black canvas / unavailable. / {currentCellLabel}
+      </p>
+    );
+  }
+
+  if (currentCell.state === "colored" && !activeTask) {
+    return (
+      <p className="mt-2 text-xl font-black">
+        Current active task: Painted project time. / {currentCellLabel}
       </p>
     );
   }
@@ -208,7 +249,7 @@ function ActiveTaskText({
   if (!activeTask) {
     return (
       <p className="mt-2 text-xl font-black">
-        Free canvas / {currentCellLabel}
+        Current active task: Free canvas. / {currentCellLabel}
       </p>
     );
   }

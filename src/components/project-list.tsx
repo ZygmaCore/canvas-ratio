@@ -2,6 +2,7 @@ import {
   getProjectTaskCount,
   getProjectUsageFromSlots,
 } from "@/lib/projects";
+import { InlineMessage } from "@/components/inline-message";
 import type { DayRecord } from "@/types/canvas";
 
 type ProjectListProps = {
@@ -33,9 +34,9 @@ export function ProjectList({
       </div>
 
       {projects.length === 0 ? (
-        <p className="mt-4 border-2 border-[#1A1A1A] bg-[#FFD7BF] px-4 py-3 text-sm font-black">
-          No projects yet. Add project ratios before painting tasks.
-        </p>
+        <InlineMessage type="warning" className="mt-4">
+          Create projects first. Ratios must total 100 before painting.
+        </InlineMessage>
       ) : null}
 
       <div className="mt-4 grid gap-3">
@@ -91,9 +92,9 @@ export function ProjectList({
                   </div>
 
                   {projectUsage?.overQuota ? (
-                    <p className="mt-3 border-2 border-[#1A1A1A] bg-[#FFD91A] px-3 py-2 text-sm font-black">
+                    <InlineMessage type="warning" className="mt-3">
                       This project is over quota.
-                    </p>
+                    </InlineMessage>
                   ) : null}
 
                   {project.description ? (

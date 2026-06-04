@@ -111,11 +111,11 @@ export function assignMinutesByCellIndices(
     const cell = getCellState(slots, cellIndex);
 
     if (cell.state === "black") {
-      throw new Error("This cell contains black canvas.");
+      throw new Error("Unavailable time cannot be painted.");
     }
 
     if (cell.state === "colored" || cell.isMixed) {
-      throw new Error("This cell is already painted.");
+      throw new Error("This cell is already colored.");
     }
   }
 

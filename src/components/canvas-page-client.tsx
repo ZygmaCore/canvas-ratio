@@ -38,6 +38,7 @@ import {
 } from "@/lib/settings";
 import { createTaskRecord, type TaskRecordInput } from "@/lib/tasks";
 import { getTodayDateKey } from "@/lib/time";
+import { unpaintCell } from "@/lib/unpaint";
 import type {
   DayRecord,
   GeneratedImageRecord,
@@ -311,7 +312,23 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
   function handleToggleCell(cellIndex: number) {
     setCellError("");
 
-    if (!day || !editable || !manualPaintingActive) {
+    if (!day || !editable) {
+      return;
+    }
+
+    const cell = getCellState(day.slots, cellIndex);
+
+    if (cell.state === "black") {
+      setCellError("Unavailable time cannot be painted.");
+      return;
+    }
+
+    if (cell.state === "colored" || cell.isMixed) {
+      handleUnpaintCell(cellIndex);
+      return;
+    }
+
+    if (!manualPaintingActive) {
       return;
     }
 
@@ -319,18 +336,6 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
       setSelectedCellIndices((currentCells) =>
         currentCells.filter((currentCell) => currentCell !== cellIndex),
       );
-      return;
-    }
-
-    const cell = getCellState(day.slots, cellIndex);
-
-    if (cell.state === "black") {
-      setCellError("Unavailable time cannot be colored.");
-      return;
-    }
-
-    if (cell.state === "colored" || cell.isMixed) {
-      setCellError("This cell is already colored and cannot be overwritten.");
       return;
     }
 
@@ -353,6 +358,30 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
       [...currentCells, cellIndex].sort(
         (firstCell, secondCell) => firstCell - secondCell,
       ),
+    );
+  }
+
+  function handleUnpaintCell(cellIndex: number) {
+    setCellError("");
+
+    if (!day || !editable) {
+      return;
+    }
+
+    const cell = getCellState(day.slots, cellIndex);
+
+    if (cell.state === "black") {
+      setCellError("Unavailable time cannot be painted.");
+      return;
+    }
+
+    if (cell.state !== "colored") {
+      return;
+    }
+
+    saveDay(unpaintCell(day, cellIndex));
+    setSelectedCellIndices((currentCells) =>
+      currentCells.filter((currentCell) => currentCell !== cellIndex),
     );
   }
 
@@ -408,20 +437,22 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
             day={day}
             selectedProjectId={selectedProjectId}
             selectedCellIndices={selectedCellIndices}
-            editable={editable && manualPaintingActive}
+            editable={editable}
             quotaReady={ratioValidation.valid}
             compact
             onToggleCell={handleToggleCell}
+            onUnpaintCell={handleUnpaintCell}
           />
           <CellCanvas
             mode="pm"
             day={day}
             selectedProjectId={selectedProjectId}
             selectedCellIndices={selectedCellIndices}
-            editable={editable && manualPaintingActive}
+            editable={editable}
             quotaReady={ratioValidation.valid}
             compact
             onToggleCell={handleToggleCell}
+            onUnpaintCell={handleUnpaintCell}
           />
         </section>
 
@@ -481,10 +512,11 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
           <PanelHeading
             eyebrow="Step 3"
             title="Paint"
-            description="Choose a project, then click white cells to paint them."
+            description="Click white cells to paint. Click colored cells to clear them."
           />
           <InlineMessage type="info">
-            Choose a project, then click white cells to paint them.
+            Click white cells to paint. Click colored cells to clear them.
+            Black cells are unavailable.
           </InlineMessage>
           {!hasProjects ? (
             <ActionCard
@@ -875,7 +907,7 @@ function ReadyToPaintCallout({
     <section className="rounded-lg border-2 border-[#1A1A1A] bg-[#6FB6FF] p-4 shadow-[4px_4px_0_#1A1A1A]">
       <h3 className="text-lg font-black">Ready to paint.</h3>
       <p className="mt-2 text-sm font-bold">
-        Choose a project, then click Free cells to color your day.
+        Click white cells to paint. Click colored cells to clear them.
       </p>
       <button
         type="button"

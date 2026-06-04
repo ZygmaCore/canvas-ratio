@@ -196,7 +196,7 @@ export function TaskForm({
         <div>
           <h2 className="text-2xl font-black">Paint Your Day</h2>
           <p className="mt-1 text-sm font-bold">
-            Choose a project, name the task, then click Free cells on the canvas.
+            Click white cells to paint. Click colored cells to clear them.
           </p>
         </div>
         <span

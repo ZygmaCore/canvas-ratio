@@ -13,6 +13,7 @@ type CellCanvasProps = {
   quotaReady: boolean;
   compact?: boolean;
   onToggleCell: (cellIndex: number) => void;
+  onUnpaintCell: (cellIndex: number) => void;
 };
 
 const modeTitles: Record<CellCanvasMode, string> = {
@@ -29,6 +30,7 @@ export function CellCanvas({
   quotaReady,
   compact = false,
   onToggleCell,
+  onUnpaintCell,
 }: CellCanvasProps) {
   const cells = day ? getCellsForCanvas(day.slots, mode) : [];
   const taskById = new Map((day?.tasks ?? []).map((task) => [task.id, task]));
@@ -41,7 +43,8 @@ export function CellCanvas({
             {modeTitles[mode]}
           </h2>
           <p className="text-sm font-bold text-[#4a4a4a]">
-            24 half-hour cells. Click Free cells to color them.
+            Click white cells to paint. Click colored cells to clear them.
+            Black cells are unavailable.
           </p>
         </div>
         <span className="border-2 border-[#1A1A1A] bg-[#FFD91A] px-3 py-1 text-sm font-black">
@@ -53,14 +56,8 @@ export function CellCanvas({
         {cells.map((cell) => {
           const selected = selectedCellIndices.includes(cell.cellIndex);
           const task = cell.taskId ? taskById.get(cell.taskId) : undefined;
-          const blocked =
-            cell.state === "black" ||
-            cell.state === "colored" ||
-            cell.isMixed;
-          const disabled =
-            !editable ||
-            !selectedProjectId ||
-            (!quotaReady && !blocked);
+          const blocked = cell.state === "black";
+          const disabled = !editable;
 
           return (
             <CellButton
@@ -74,6 +71,7 @@ export function CellCanvas({
               }
               compact={compact}
               onToggleCell={onToggleCell}
+              onUnpaintCell={onUnpaintCell}
             />
           );
         })}
@@ -90,6 +88,7 @@ function CellButton({
   projectName,
   compact,
   onToggleCell,
+  onUnpaintCell,
 }: {
   cell: CellView;
   disabled: boolean;
@@ -98,6 +97,7 @@ function CellButton({
   projectName?: string;
   compact: boolean;
   onToggleCell: (cellIndex: number) => void;
+  onUnpaintCell: (cellIndex: number) => void;
 }) {
   const isBlack = cell.state === "black";
   const label =
@@ -115,7 +115,14 @@ function CellButton({
       type="button"
       disabled={disabled && !selected}
       aria-pressed={selected}
-      onClick={() => onToggleCell(cell.cellIndex)}
+      onClick={() => {
+        if (cell.state === "colored") {
+          onUnpaintCell(cell.cellIndex);
+          return;
+        }
+
+        onToggleCell(cell.cellIndex);
+      }}
       aria-label={ariaLabel}
       data-testid={`cell-${cell.cellIndex}`}
       className={`${compact ? "min-h-[50px] p-1.5" : "min-h-[72px] p-2"} border-2 border-[#1A1A1A] text-left transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] ${

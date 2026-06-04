@@ -53,7 +53,9 @@ export function TaskList({
             Task List
           </h2>
           <p className="mt-1 text-sm font-bold">
-            Tasks color project cells and stay assigned under unavailable time.
+            {compact
+              ? "Click colored canvas cells to clear them."
+              : "Tasks color project cells and stay assigned under unavailable time."}
           </p>
         </div>
         <span className="border-2 border-[#1A1A1A] bg-[#FFD91A] px-3 py-1 text-sm font-black">
@@ -166,7 +168,7 @@ function TaskCard({
 
           {coveredCells > 0 ? (
             <InlineMessage type="warning" className="mt-3">
-              Partially covered by black canvas. {coveredCells} cell
+              Partially covered by unavailable time. {coveredCells} cell
               {coveredCells === 1 ? "" : "s"} hidden.
             </InlineMessage>
           ) : null}
@@ -178,7 +180,7 @@ function TaskCard({
           ) : null}
         </div>
 
-        {editable ? (
+        {editable && !compact ? (
           <button
             type="button"
             onClick={() => onDeleteTask(task.id)}

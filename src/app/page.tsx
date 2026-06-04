@@ -9,12 +9,12 @@ import {
 
 const tutorialCards = [
   {
-    title: "White Canvas",
+    title: "Free Time",
     description: "Free/unpainted time.",
     swatchColor: WHITE_CANVAS.hex,
   },
   {
-    title: "Black Canvas",
+    title: "Unavailable Time",
     description: "Sleep, random events, and unavailable time.",
     swatchColor: BLACK_CANVAS.hex,
   },
@@ -64,7 +64,7 @@ export default function LandingPage() {
           </p>
           <ul className="mt-5 grid max-w-xl gap-2 text-base font-bold leading-7 text-[#323232]">
             <li>Your day is a canvas.</li>
-            <li>White is free time, black is unavailable time, and colors are projects and tasks.</li>
+            <li>Free time is open, unavailable time is blocked, and colors are projects and tasks.</li>
             <li>Project ratios divide only the non-black canvas.</li>
             <li>Paint your day in 30-minute cells.</li>
           </ul>

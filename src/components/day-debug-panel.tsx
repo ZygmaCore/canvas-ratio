@@ -82,7 +82,7 @@ export function DayDebugPanel({
   ];
 
   return (
-    <section className="mt-6">
+    <section>
       <details className="rounded-lg border-2 border-[#1A1A1A] bg-white p-4 shadow-[4px_4px_0_#1A1A1A]">
         <summary className="cursor-pointer text-lg font-black focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]">
           Developer Details

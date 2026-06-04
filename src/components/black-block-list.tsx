@@ -23,9 +23,9 @@ export function BlackBlockList({
     <section className="rounded-lg border-2 border-[#1A1A1A] bg-[#FFFFFF] p-5 shadow-[4px_4px_0_#1A1A1A]">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-2xl font-black">Black Canvas Blocks</h2>
+          <h2 className="text-2xl font-black">Unavailable Time</h2>
           <p className="mt-1 text-sm font-bold">
-            Sleep and random events become unavailable canvas.
+            Sleep and random events become time you cannot color.
           </p>
         </div>
         <span
@@ -37,7 +37,7 @@ export function BlackBlockList({
 
       {!hasBlocks ? (
         <InlineMessage type="warning" className="mt-4">
-          No black canvas blocks yet.
+          No unavailable time yet.
         </InlineMessage>
       ) : null}
 

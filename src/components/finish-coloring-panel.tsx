@@ -79,24 +79,28 @@ export function FinishColoringPanel({
           : "Finish Coloring"}
       </button>
 
-      {day.journal && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          <span className={`inline-flex items-center border-2 border-[#1A1A1A] px-2 py-0.5 text-[10px] font-black uppercase ${day.journal.source === 'ai' ? 'bg-[#6FB6FF]' : 'bg-[#FFD91A]'}`}>
-            Source: {day.journal.source === 'ai' ? 'AI' : 'Mock Fallback'}
-          </span>
-          {day.journal.model && (
-            <span className="inline-flex items-center border-2 border-[#1A1A1A] bg-white px-2 py-0.5 text-[10px] font-black uppercase">
-              Model: {day.journal.model}
+      {day.journal ? (
+        <details className="mt-4">
+          <summary className="cursor-pointer text-sm font-black focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]">
+            Technical details
+          </summary>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className={`inline-flex items-center border-2 border-[#1A1A1A] px-2 py-0.5 text-[10px] font-black uppercase ${day.journal.source === 'ai' ? 'bg-[#6FB6FF]' : 'bg-[#FFD91A]'}`}>
+              Source: {day.journal.source === 'ai' ? 'AI' : 'Mock Fallback'}
             </span>
-          )}
-        </div>
-      )}
-      
-      {day.journal?.warning && (
-        <InlineMessage type="warning" className="mt-3">
-          Warning: {day.journal.warning}
-        </InlineMessage>
-      )}
+            {day.journal.model ? (
+              <span className="inline-flex items-center border-2 border-[#1A1A1A] bg-white px-2 py-0.5 text-[10px] font-black uppercase">
+                Model: {day.journal.model}
+              </span>
+            ) : null}
+          </div>
+          {day.journal.warning ? (
+            <InlineMessage type="warning" className="mt-3">
+              Warning: {day.journal.warning}
+            </InlineMessage>
+          ) : null}
+        </details>
+      ) : null}
     </div>
   );
 }

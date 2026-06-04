@@ -71,7 +71,7 @@ export function RandomEventForm({
       <h2 className="text-2xl font-black">Random Event</h2>
       <p className="mt-2 text-sm font-bold">
         Use this for sudden events, travel, hospital, errands, social events, or
-        anything that breaks the canvas.
+        anything that makes time unavailable.
       </p>
 
       <label className="mt-4 block">

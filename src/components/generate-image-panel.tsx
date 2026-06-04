@@ -97,24 +97,28 @@ export function GenerateImagePanel({
           : "Generate Pixel Story"}
       </button>
 
-      {day.generatedImage && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          <span className={`inline-flex items-center border-2 border-[#1A1A1A] px-2 py-0.5 text-[10px] font-black uppercase ${day.generatedImage.source === 'ai' ? 'bg-[#6FB6FF]' : 'bg-[#FFD91A]'}`}>
-            Source: {day.generatedImage.source === 'ai' ? 'AI' : 'Mock Fallback'}
-          </span>
-          {day.generatedImage.model && (
-            <span className="inline-flex items-center border-2 border-[#1A1A1A] bg-white px-2 py-0.5 text-[10px] font-black uppercase">
-              Model: {day.generatedImage.model}
+      {day.generatedImage ? (
+        <details className="mt-4">
+          <summary className="cursor-pointer text-sm font-black focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]">
+            Technical details
+          </summary>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className={`inline-flex items-center border-2 border-[#1A1A1A] px-2 py-0.5 text-[10px] font-black uppercase ${day.generatedImage.source === 'ai' ? 'bg-[#6FB6FF]' : 'bg-[#FFD91A]'}`}>
+              Source: {day.generatedImage.source === 'ai' ? 'AI' : 'Mock Fallback'}
             </span>
-          )}
-        </div>
-      )}
-
-      {day.generatedImage?.warning && (
-        <InlineMessage type="warning" className="mt-3">
-          Warning: {day.generatedImage.warning}
-        </InlineMessage>
-      )}
+            {day.generatedImage.model ? (
+              <span className="inline-flex items-center border-2 border-[#1A1A1A] bg-white px-2 py-0.5 text-[10px] font-black uppercase">
+                Model: {day.generatedImage.model}
+              </span>
+            ) : null}
+          </div>
+          {day.generatedImage.warning ? (
+            <InlineMessage type="warning" className="mt-3">
+              Warning: {day.generatedImage.warning}
+            </InlineMessage>
+          ) : null}
+        </details>
+      ) : null}
     </div>
   );
 }

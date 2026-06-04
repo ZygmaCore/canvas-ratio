@@ -236,7 +236,7 @@ function ActiveTaskText({
   if (currentCell.state === "black") {
     return (
       <p className="mt-2 text-xl font-black">
-        Current active task: Black canvas / unavailable. / {currentCellLabel}
+        Current active task: Unavailable time. / {currentCellLabel}
       </p>
     );
   }
@@ -244,7 +244,7 @@ function ActiveTaskText({
   if (currentCell.state === "colored" && !activeTask) {
     return (
       <p className="mt-2 text-xl font-black">
-        Current active task: Painted project time. / {currentCellLabel}
+        Current active task: Colored project time. / {currentCellLabel}
       </p>
     );
   }
@@ -252,7 +252,7 @@ function ActiveTaskText({
   if (!activeTask) {
     return (
       <p className="mt-2 text-xl font-black">
-        Current active task: Free canvas. / {currentCellLabel}
+        Current active task: Free time. / {currentCellLabel}
       </p>
     );
   }

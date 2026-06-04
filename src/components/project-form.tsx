@@ -83,9 +83,9 @@ export function ProjectForm({
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-2xl font-black">Projects & Ratios</h2>
+          <h2 className="text-2xl font-black">Add Project</h2>
           <p className="mt-1 text-sm font-bold">
-            Projects define the colors and quotas of your day.
+            Give each project a color and a ratio.
           </p>
         </div>
         <span className="border-2 border-[#1A1A1A] bg-[#FFD91A] px-3 py-1 text-sm font-black">
@@ -158,7 +158,8 @@ export function ProjectForm({
 
       {totalRatio !== 100 ? (
         <InlineMessage type="warning" className="mt-3">
-          Project ratios must total 100 before painting. Next total would be{" "}
+          Your project ratios are not complete yet. Finish them before
+          painting. Next total would be{" "}
           {Number.isFinite(nextTotalRatio) ? nextTotalRatio : totalRatio}/100.
         </InlineMessage>
       ) : null}

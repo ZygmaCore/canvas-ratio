@@ -195,10 +195,10 @@ export function BackupPanel({
   }
 
   return (
-    <section className="mt-6 rounded-lg border-2 border-[#1A1A1A] bg-white p-5 shadow-[4px_4px_0_#1A1A1A]">
+    <section className="rounded-lg border-2 border-[#1A1A1A] bg-white p-5 shadow-[4px_4px_0_#1A1A1A]">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-2xl font-black">Backup Tools</h2>
+          <h2 className="text-2xl font-black">Backup & Settings</h2>
           <p className="mt-1 text-sm font-bold text-[#4a4a4a]">
             Export and import localStorage records only.
           </p>

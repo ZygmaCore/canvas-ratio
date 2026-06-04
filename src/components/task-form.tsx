@@ -68,6 +68,7 @@ export function TaskForm({
   const [endValue, setEndValue] = useState("10:00");
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const selectedProject = useMemo(
     () => projects.find((project) => project.id === selectedProjectId) ?? null,
     [projects, selectedProjectId],
@@ -89,6 +90,7 @@ export function TaskForm({
   function handleInputModeChange(mode: TaskInputMode) {
     setInputMode(mode);
     onInputModeChange(mode);
+    setAdvancedOpen(true);
     setError("");
   }
 
@@ -192,9 +194,9 @@ export function TaskForm({
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-2xl font-black">Task Painting</h2>
+          <h2 className="text-2xl font-black">Paint Your Day</h2>
           <p className="mt-1 text-sm font-bold">
-            Select a project, stage cells, then paint within quota.
+            Choose a project, name the task, then click Free cells on the canvas.
           </p>
         </div>
         <span
@@ -206,13 +208,13 @@ export function TaskForm({
 
       {projects.length === 0 ? (
         <InlineMessage type="warning" className="mt-4">
-          Create projects first. Ratios must total 100 before painting.
+          Add projects first. Ratios must total 100 before painting.
         </InlineMessage>
       ) : null}
 
       {!quotaReady && projects.length > 0 ? (
         <InlineMessage type="warning" className="mt-4">
-          Project ratios must total 100 before painting.
+          Your project ratios are not complete yet. Finish them before painting.
         </InlineMessage>
       ) : null}
 
@@ -252,159 +254,12 @@ export function TaskForm({
         </label>
       </div>
 
-      <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <label className="block">
-          <span className="text-sm font-black uppercase text-[#2F5FBF]">
-            Mode
-          </span>
-          <select
-            value={inputMode}
-            disabled={formDisabled}
-            data-testid="task-mode"
-            onChange={(event) =>
-              handleInputModeChange(event.currentTarget.value as TaskInputMode)
-            }
-            className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
-          >
-            {Object.entries(inputModeLabels).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="block">
-          <span className="text-sm font-black uppercase text-[#2F5FBF]">
-            Target
-          </span>
-          <select
-            value={targetCanvas}
-            disabled={formDisabled || inputMode === "manual-cell"}
-            data-testid="task-target"
-            onChange={(event) =>
-              setTargetCanvas(event.currentTarget.value as TargetCanvas)
-            }
-            className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
-          >
-            {Object.entries(targetCanvasLabels).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
       {inputMode === "manual-cell" ? (
         <p className="mt-4 border-2 border-[#1A1A1A] bg-[#FBFBF7] px-4 py-3 text-sm font-black">
           Selected cells: {selectedCellIndices.length}. Remaining quota:{" "}
           {remainingQuotaCells} cells.
         </p>
       ) : null}
-
-      {inputMode === "duration" ? (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <label className="block">
-            <span className="text-sm font-black uppercase text-[#2F5FBF]">
-              Hours
-            </span>
-            <input
-              type="number"
-              min="0"
-              max="24"
-              value={durationHours}
-              disabled={formDisabled}
-              data-testid="task-duration-hours"
-              onChange={(event) =>
-                setDurationHours(event.currentTarget.value)
-              }
-              onInput={(event) => setDurationHours(event.currentTarget.value)}
-              className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
-            />
-          </label>
-          <label className="block">
-            <span className="text-sm font-black uppercase text-[#2F5FBF]">
-              Minutes
-            </span>
-            <input
-              type="number"
-              min="0"
-              max="59"
-              value={durationMinutes}
-              disabled={formDisabled}
-              data-testid="task-duration-minutes"
-              onChange={(event) =>
-                setDurationMinutes(event.currentTarget.value)
-              }
-              onInput={(event) =>
-                setDurationMinutes(event.currentTarget.value)
-              }
-              className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
-            />
-          </label>
-        </div>
-      ) : null}
-
-      {inputMode === "ratio" ? (
-        <label className="mt-4 block">
-          <span className="text-sm font-black uppercase text-[#2F5FBF]">
-            Ratio %
-          </span>
-          <input
-            type="number"
-            min="1"
-            max="100"
-            step="1"
-            value={ratio}
-            disabled={formDisabled}
-            data-testid="task-ratio"
-            onChange={(event) => setRatio(event.currentTarget.value)}
-            onInput={(event) => setRatio(event.currentTarget.value)}
-            className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
-          />
-        </label>
-      ) : null}
-
-      {inputMode === "time-range" ? (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <label className="block">
-            <span className="text-sm font-black uppercase text-[#2F5FBF]">
-              Start
-            </span>
-            <input
-              type="time"
-              step="1800"
-              value={startValue}
-              disabled={formDisabled}
-              data-testid="task-start"
-              onChange={(event) => setStartValue(event.currentTarget.value)}
-              onInput={(event) => setStartValue(event.currentTarget.value)}
-              className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
-            />
-          </label>
-          <label className="block">
-            <span className="text-sm font-black uppercase text-[#2F5FBF]">
-              End
-            </span>
-            <input
-              type="time"
-              step="1800"
-              value={endValue}
-              disabled={formDisabled}
-              data-testid="task-end"
-              onChange={(event) => setEndValue(event.currentTarget.value)}
-              onInput={(event) => setEndValue(event.currentTarget.value)}
-              className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
-            />
-          </label>
-        </div>
-      ) : null}
-
-      <p className="mt-3 text-sm font-bold text-[#4a4a4a]">
-        Canvas painting uses 30-minute cells. Duration mode rounds up to the
-        next full cell; time ranges must align to 30-minute boundaries.
-      </p>
 
       <label className="mt-4 block">
         <span className="text-sm font-black uppercase text-[#2F5FBF]">
@@ -420,6 +275,164 @@ export function TaskForm({
           placeholder="Optional"
         />
       </label>
+
+      <details
+        open={advancedOpen}
+        onToggle={(event) => setAdvancedOpen(event.currentTarget.open)}
+        className="mt-4"
+      >
+        <summary className="min-h-11 cursor-pointer border-2 border-[#1A1A1A] bg-[#FBFBF7] px-4 py-2 text-sm font-black focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]">
+          More ways to paint
+        </summary>
+        <div className="mt-4 grid gap-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="block">
+              <span className="text-sm font-black uppercase text-[#2F5FBF]">
+                Mode
+              </span>
+              <select
+                value={inputMode}
+                disabled={formDisabled}
+                data-testid="task-mode"
+                onChange={(event) =>
+                  handleInputModeChange(event.currentTarget.value as TaskInputMode)
+                }
+                className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
+              >
+                {Object.entries(inputModeLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-black uppercase text-[#2F5FBF]">
+                Target
+              </span>
+              <select
+                value={targetCanvas}
+                disabled={formDisabled || inputMode === "manual-cell"}
+                data-testid="task-target"
+                onChange={(event) =>
+                  setTargetCanvas(event.currentTarget.value as TargetCanvas)
+                }
+                className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
+              >
+                {Object.entries(targetCanvasLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {inputMode === "duration" ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-sm font-black uppercase text-[#2F5FBF]">
+                  Hours
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  max="24"
+                  value={durationHours}
+                  disabled={formDisabled}
+                  data-testid="task-duration-hours"
+                  onChange={(event) =>
+                    setDurationHours(event.currentTarget.value)
+                  }
+                  onInput={(event) => setDurationHours(event.currentTarget.value)}
+                  className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
+                />
+              </label>
+              <label className="block">
+                <span className="text-sm font-black uppercase text-[#2F5FBF]">
+                  Minutes
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  max="59"
+                  value={durationMinutes}
+                  disabled={formDisabled}
+                  data-testid="task-duration-minutes"
+                  onChange={(event) =>
+                    setDurationMinutes(event.currentTarget.value)
+                  }
+                  onInput={(event) =>
+                    setDurationMinutes(event.currentTarget.value)
+                  }
+                  className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
+                />
+              </label>
+            </div>
+          ) : null}
+
+          {inputMode === "ratio" ? (
+            <label className="block">
+              <span className="text-sm font-black uppercase text-[#2F5FBF]">
+                Ratio %
+              </span>
+              <input
+                type="number"
+                min="1"
+                max="100"
+                step="1"
+                value={ratio}
+                disabled={formDisabled}
+                data-testid="task-ratio"
+                onChange={(event) => setRatio(event.currentTarget.value)}
+                onInput={(event) => setRatio(event.currentTarget.value)}
+                className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
+              />
+            </label>
+          ) : null}
+
+          {inputMode === "time-range" ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-sm font-black uppercase text-[#2F5FBF]">
+                  Start
+                </span>
+                <input
+                  type="time"
+                  step="1800"
+                  value={startValue}
+                  disabled={formDisabled}
+                  data-testid="task-start"
+                  onChange={(event) => setStartValue(event.currentTarget.value)}
+                  onInput={(event) => setStartValue(event.currentTarget.value)}
+                  className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
+                />
+              </label>
+              <label className="block">
+                <span className="text-sm font-black uppercase text-[#2F5FBF]">
+                  End
+                </span>
+                <input
+                  type="time"
+                  step="1800"
+                  value={endValue}
+                  disabled={formDisabled}
+                  data-testid="task-end"
+                  onChange={(event) => setEndValue(event.currentTarget.value)}
+                  onInput={(event) => setEndValue(event.currentTarget.value)}
+                  className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
+                />
+              </label>
+            </div>
+          ) : null}
+
+          <p className="text-sm font-bold text-[#4a4a4a]">
+            Canvas painting uses 30-minute cells. Duration mode rounds up to
+            the next full cell; time ranges must align to 30-minute boundaries.
+          </p>
+        </div>
+      </details>
 
       {error ? (
         <InlineMessage type="error" className="mt-3">

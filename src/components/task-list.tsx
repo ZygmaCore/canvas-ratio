@@ -16,6 +16,7 @@ import type {
 type TaskListProps = {
   day: DayRecord | null;
   editable: boolean;
+  compact?: boolean;
   onDeleteTask: (taskId: string) => void;
 };
 
@@ -35,17 +36,24 @@ const targetCanvasLabels: Record<TargetCanvas, string> = {
 export function TaskList({
   day,
   editable,
+  compact = false,
   onDeleteTask,
 }: TaskListProps) {
   const tasks = day?.tasks ?? [];
 
   return (
-    <section className="rounded-lg border-2 border-[#1A1A1A] bg-[#FFFFFF] p-5 shadow-[4px_4px_0_#1A1A1A]">
+    <section
+      className={`rounded-lg border-2 border-[#1A1A1A] bg-[#FFFFFF] shadow-[4px_4px_0_#1A1A1A] ${
+        compact ? "p-4" : "p-5"
+      }`}
+    >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-2xl font-black">Task List</h2>
+          <h2 className={compact ? "text-xl font-black" : "text-2xl font-black"}>
+            Task List
+          </h2>
           <p className="mt-1 text-sm font-bold">
-            Tasks paint project cells and stay assigned under black canvas.
+            Tasks color project cells and stay assigned under unavailable time.
           </p>
         </div>
         <span className="border-2 border-[#1A1A1A] bg-[#FFD91A] px-3 py-1 text-sm font-black">
@@ -66,6 +74,7 @@ export function TaskList({
             task={task}
             day={day}
             editable={editable}
+            compact={compact}
             onDeleteTask={onDeleteTask}
           />
         ))}
@@ -78,11 +87,13 @@ function TaskCard({
   task,
   day,
   editable,
+  compact,
   onDeleteTask,
 }: {
   task: TaskRecord;
   day: DayRecord | null;
   editable: boolean;
+  compact: boolean;
   onDeleteTask: (taskId: string) => void;
 }) {
   const assignedCells = getAssignedCellCount(task);
@@ -113,36 +124,45 @@ function TaskCard({
             </div>
           </div>
 
-          <div className="mt-3 grid gap-2 text-sm font-bold sm:grid-cols-2">
-            <p>
-              Mode:{" "}
-              <span className="font-black">
-                {inputModeLabels[task.inputMode] ?? "Task"}
-              </span>
-            </p>
-            <p>
-              Requested:{" "}
-              <span className="font-black">{getRequestedLabel(task)}</span>
-            </p>
-            <p>
-              Target:{" "}
-              <span className="font-black">
-                {targetCanvasLabels[task.targetCanvas ?? "full"]}
-              </span>
-            </p>
-            <p>
-              Assigned:{" "}
-              <span className="font-black">
-                {assignedCells} cells / {assignedMinutes} min
-              </span>
-            </p>
-            <p>
-              Painted:{" "}
+          {compact ? (
+            <p className="mt-3 text-sm font-bold">
+              Colored:{" "}
               <span className="font-black">
                 {effectiveCells} cells / {effectiveMinutes} min
               </span>
             </p>
-          </div>
+          ) : (
+            <div className="mt-3 grid gap-2 text-sm font-bold sm:grid-cols-2">
+              <p>
+                Mode:{" "}
+                <span className="font-black">
+                  {inputModeLabels[task.inputMode] ?? "Task"}
+                </span>
+              </p>
+              <p>
+                Requested:{" "}
+                <span className="font-black">{getRequestedLabel(task)}</span>
+              </p>
+              <p>
+                Target:{" "}
+                <span className="font-black">
+                  {targetCanvasLabels[task.targetCanvas ?? "full"]}
+                </span>
+              </p>
+              <p>
+                Assigned:{" "}
+                <span className="font-black">
+                  {assignedCells} cells / {assignedMinutes} min
+                </span>
+              </p>
+              <p>
+                Colored:{" "}
+                <span className="font-black">
+                  {effectiveCells} cells / {effectiveMinutes} min
+                </span>
+              </p>
+            </div>
+          )}
 
           {coveredCells > 0 ? (
             <InlineMessage type="warning" className="mt-3">

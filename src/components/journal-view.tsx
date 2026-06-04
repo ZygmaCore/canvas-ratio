@@ -38,22 +38,26 @@ export function JournalView({ journal }: JournalViewProps) {
         ))}
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-2 border-t-2 border-[#1A1A1A] pt-4">
-        <span className={`inline-flex items-center border-2 border-[#1A1A1A] px-2 py-0.5 text-[10px] font-black uppercase ${journal.source === 'ai' ? 'bg-[#6FB6FF]' : 'bg-[#FFD91A]'}`}>
-          Source: {journal.source === 'ai' ? 'AI' : 'Mock Fallback'}
-        </span>
-        {journal.model && (
-          <span className="inline-flex items-center border-2 border-[#1A1A1A] bg-white px-2 py-0.5 text-[10px] font-black uppercase">
-            Model: {journal.model}
+      <details className="mt-6 border-t-2 border-[#1A1A1A] pt-4">
+        <summary className="cursor-pointer text-sm font-black focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]">
+          Technical details
+        </summary>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <span className={`inline-flex items-center border-2 border-[#1A1A1A] px-2 py-0.5 text-[10px] font-black uppercase ${journal.source === 'ai' ? 'bg-[#6FB6FF]' : 'bg-[#FFD91A]'}`}>
+            Source: {journal.source === 'ai' ? 'AI' : 'Mock Fallback'}
           </span>
-        )}
-      </div>
-
-      {journal.warning ? (
-        <InlineMessage type="warning" className="mt-4">
-          Warning: {journal.warning}
-        </InlineMessage>
-      ) : null}
+          {journal.model && (
+            <span className="inline-flex items-center border-2 border-[#1A1A1A] bg-white px-2 py-0.5 text-[10px] font-black uppercase">
+              Model: {journal.model}
+            </span>
+          )}
+        </div>
+        {journal.warning ? (
+          <InlineMessage type="warning" className="mt-4">
+            Warning: {journal.warning}
+          </InlineMessage>
+        ) : null}
+      </details>
     </div>
   );
 }

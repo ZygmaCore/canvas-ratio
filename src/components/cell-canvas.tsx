@@ -16,8 +16,8 @@ type CellCanvasProps = {
 };
 
 const modeTitles: Record<CellCanvasMode, string> = {
-  am: "A.M. Cell Canvas",
-  pm: "P.M. Cell Canvas",
+  am: "A.M. Canvas",
+  pm: "P.M. Canvas",
 };
 
 export function CellCanvas({
@@ -41,7 +41,7 @@ export function CellCanvas({
             {modeTitles[mode]}
           </h2>
           <p className="text-sm font-bold text-[#4a4a4a]">
-            24 half-hour cells for click painting.
+            24 half-hour cells. Click Free cells to color them.
           </p>
         </div>
         <span className="border-2 border-[#1A1A1A] bg-[#FFD91A] px-3 py-1 text-sm font-black">
@@ -102,9 +102,9 @@ function CellButton({
   const isBlack = cell.state === "black";
   const label =
     cell.state === "colored"
-      ? projectName ?? "Painted project time"
+      ? projectName ?? "Colored project time"
       : cell.state === "black"
-        ? "Black canvas"
+        ? "Unavailable"
         : cell.isMixed
           ? "Mixed"
           : "Free";
@@ -160,16 +160,16 @@ function getCellAriaLabel(
   const timeRange = cell.label.replace("-", "–");
 
   if (cell.state === "black") {
-    return `${timeRange}, black canvas, unavailable`;
+    return `${timeRange}, unavailable time`;
   }
 
   if (cell.state === "colored") {
-    return `${timeRange}, ${label}, painted`;
+    return `${timeRange}, ${label}, colored`;
   }
 
   if (cell.isMixed) {
     return `${timeRange}, mixed canvas`;
   }
 
-  return `${timeRange}, free canvas${selected ? ", selected" : ""}`;
+  return `${timeRange}, free time${selected ? ", selected" : ""}`;
 }

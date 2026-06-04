@@ -21,6 +21,9 @@ type PomodoroPanelProps = {
   compact?: boolean;
 };
 
+const POMODORO_NOTIFICATION_SOUND_SRC = "/sound/bell.mp3";
+const POMODORO_NOTIFICATION_VOLUME = 1;
+
 export function PomodoroPanel({
   day,
   readOnly = false,
@@ -273,25 +276,11 @@ function ActiveTaskText({
 
 function playBeep() {
   try {
-    const AudioContextConstructor =
-      window.AudioContext ||
-      (window as Window & { webkitAudioContext?: typeof AudioContext })
-        .webkitAudioContext;
-
-    if (!AudioContextConstructor) {
-      return;
-    }
-
-    const audioContext = new AudioContextConstructor();
-    const oscillator = audioContext.createOscillator();
-    const gain = audioContext.createGain();
-
-    oscillator.frequency.value = 660;
-    gain.gain.value = 0.08;
-    oscillator.connect(gain);
-    gain.connect(audioContext.destination);
-    oscillator.start();
-    oscillator.stop(audioContext.currentTime + 0.12);
+    const audio = new Audio(POMODORO_NOTIFICATION_SOUND_SRC);
+    audio.volume = POMODORO_NOTIFICATION_VOLUME;
+    void audio.play().catch(() => {
+      // Browser audio permissions can block this; the visual timer still works.
+    });
   } catch {
     // Browser audio permissions can block this; the visual timer still works.
   }

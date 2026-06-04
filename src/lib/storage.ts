@@ -2,6 +2,10 @@ import { createEmptyDayRecord } from "@/lib/day";
 import { CANVAS_PALETTE, PROJECT_COLORS, WHITE_CANVAS, BLACK_CANVAS } from "@/lib/palette";
 import { createMigratedProjectId, validateProjectColor } from "@/lib/projects";
 import { rebuildDaySlots } from "@/lib/rebuild";
+import {
+  getDefaultSettings,
+  normalizeGlobalProjectId,
+} from "@/lib/settings";
 import { createEmptySlots, MINUTES_PER_DAY } from "@/lib/time";
 import type {
   CanvasSlot,
@@ -17,7 +21,7 @@ import type {
 } from "@/types/canvas";
 
 export const DAY_STORAGE_PREFIX = "canvas-ratio:v1:";
-export const SETTINGS_STORAGE_KEY = "canvas-ratio:settings";
+export { SETTINGS_STORAGE_KEY } from "@/lib/settings";
 
 type NormalizedTask = TaskRecord & {
   projectName?: string;
@@ -300,7 +304,6 @@ function migrateProjectsAndTasks({
   projects: ProjectRecord[];
   tasks: NormalizedTask[];
 } {
-  const hadProjects = rawProjects.length > 0;
   const projects = assignUniqueProjectColors(
     rawProjects
       .filter(isPlainObject)
@@ -323,10 +326,6 @@ function migrateProjectsAndTasks({
       }),
     )
     .filter((task): task is NormalizedTask => !!task);
-
-  if (!hadProjects && projects.length > 0) {
-    normalizeMigratedRatios(projects);
-  }
 
   return {
     projects,
@@ -384,7 +383,14 @@ function normalizeStoredTask(
   const existingProject = projectId
     ? context.migratedProjectMap.get(projectId)
     : undefined;
-  const project = existingProject ?? getOrCreateMigratedProject(task, context);
+  const projectName =
+    normalizeOptionalString(task.projectName)?.trim() ||
+    existingProject?.name;
+  const project = getGlobalProjectForStoredTask({
+    projectId,
+    projectName,
+    existingProject,
+  });
   const assignedMinutes = normalizeAssignedMinutes(
     task.assignedMinutes ?? task.minutes,
   );
@@ -394,10 +400,9 @@ function normalizeStoredTask(
   return {
     id: normalizeOptionalString(task.id) ?? createTaskId(),
     projectId: project.id,
-    projectName:
-      normalizeOptionalString(task.projectName)?.trim() || project.name,
+    projectName: project.name,
     taskName,
-    color: validateStoredProjectColor(task.color ?? project.color),
+    color: project.color,
     inputMode,
     targetCanvas,
     assignedMinutes,
@@ -416,34 +421,35 @@ function normalizeStoredTask(
   };
 }
 
-function getOrCreateMigratedProject(
-  task: Record<string, unknown>,
-  context: {
-    createdAt: string;
-    projects: ProjectRecord[];
-    migratedProjectMap: Map<string, ProjectRecord>;
-  },
-): ProjectRecord {
-  const name =
-    normalizeOptionalString(task.projectName)?.trim() || "Untitled Project";
-  const color = validateStoredProjectColor(task.color);
-  const id = createMigratedProjectId(name, color);
-  const existingProject = context.migratedProjectMap.get(id);
+function getGlobalProjectForStoredTask({
+  projectId,
+  projectName,
+  existingProject,
+}: {
+  projectId?: string;
+  projectName?: string;
+  existingProject?: ProjectRecord;
+}): ProjectRecord {
+  const projects = getDefaultSettings().projects;
+  const normalizedProjectId =
+    normalizeGlobalProjectId(projectId, projectName) ??
+    normalizeGlobalProjectId(existingProject?.id, existingProject?.name);
 
-  if (existingProject) {
-    return existingProject;
+  const project =
+    projects.find((candidate) => candidate.id === normalizedProjectId) ??
+    projects[0];
+
+  if (!normalizedProjectId && (projectId || projectName || existingProject)) {
+    console.warn(
+      "Canvas Ratio mapped an unknown legacy project to Academic.",
+      {
+        projectId,
+        projectName,
+        existingProjectId: existingProject?.id,
+        existingProjectName: existingProject?.name,
+      },
+    );
   }
-
-  const project: ProjectRecord = {
-    id,
-    name,
-    color: getNextAvailableProjectColor(context.projects, color),
-    ratio: 1,
-    createdAt: context.createdAt,
-  };
-
-  context.migratedProjectMap.set(project.id, project);
-  context.projects.push(project);
 
   return project;
 }
@@ -530,7 +536,7 @@ function normalizeStoredSlots(
       return {
         minute,
         state,
-        color: validateStoredProjectColor(slot.color, fallbackColor),
+        color: fallbackColor,
         taskId,
       };
     }

@@ -7,35 +7,34 @@ import type { DayRecord } from "@/types/canvas";
 
 type ProjectListProps = {
   day: DayRecord | null;
+  projects: DayRecord["projects"];
   editable: boolean;
-  onDeleteProject: (projectId: string) => void;
 };
 
 export function ProjectList({
   day,
+  projects,
   editable,
-  onDeleteProject,
 }: ProjectListProps) {
-  const projects = day?.projects ?? [];
-  const usage = day ? getProjectUsageFromSlots(day) : [];
+  const usage = day ? getProjectUsageFromSlots(day, projects) : [];
 
   return (
     <section className="rounded-lg border-2 border-[#1A1A1A] bg-[#FFFFFF] p-5 shadow-[4px_4px_0_#1A1A1A]">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-2xl font-black">Your Projects</h2>
+          <h2 className="text-2xl font-black">Set your daily ratios</h2>
           <p className="mt-1 text-sm font-bold">
-            Ratios split your available canvas time.
+            Ratios split non-black paintable canvas time.
           </p>
         </div>
         <span className="border-2 border-[#1A1A1A] bg-[#FFD91A] px-3 py-1 text-sm font-black">
-          {projects.length} project{projects.length === 1 ? "" : "s"}
+          Fixed projects
         </span>
       </div>
 
       {projects.length === 0 ? (
         <InlineMessage type="warning" className="mt-4">
-          Add projects first. Ratios must total 100 before painting.
+          Project settings could not be loaded.
         </InlineMessage>
       ) : null}
 
@@ -93,7 +92,7 @@ export function ProjectList({
 
                   {projectUsage?.overQuota ? (
                     <InlineMessage type="warning" className="mt-3">
-                      This project is over quota.
+                      Over quota because the day changed.
                     </InlineMessage>
                   ) : null}
 
@@ -105,14 +104,9 @@ export function ProjectList({
                 </div>
 
                 {editable ? (
-                  <button
-                    type="button"
-                    onClick={() => onDeleteProject(project.id)}
-                    aria-label={`Delete project ${project.name}`}
-                    className="min-h-10 shrink-0 border-2 border-[#1A1A1A] bg-[#D62828] px-3 py-2 text-sm font-black text-[#FFFFFF]"
-                  >
-                    Delete
-                  </button>
+                  <span className="min-h-10 shrink-0 border-2 border-[#1A1A1A] bg-white px-3 py-2 text-sm font-black">
+                    Fixed
+                  </span>
                 ) : null}
               </div>
             </article>

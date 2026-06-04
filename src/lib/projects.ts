@@ -4,6 +4,10 @@ import {
   getPaintableCellIndices,
 } from "@/lib/cells";
 import { PROJECT_COLORS } from "@/lib/palette";
+import {
+  getGlobalProjects,
+  normalizeGlobalProjectId,
+} from "@/lib/settings";
 import type { DayRecord, ProjectRecord, TaskRecord } from "@/types/canvas";
 
 export type ProjectRecordInput = {
@@ -67,12 +71,26 @@ export function validateProjectRatios(
   projects: ProjectRecord[],
 ): ProjectRatioValidation {
   const total = getProjectRatioTotal(projects);
+  const invalidProject = projects.find(
+    (project) =>
+      !Number.isInteger(project.ratio) ||
+      project.ratio < 0 ||
+      project.ratio > 100,
+  );
 
   if (projects.length === 0) {
     return {
       valid: false,
       total,
-      message: "Add projects until the total ratio reaches 100.",
+      message: "Project settings could not be loaded.",
+    };
+  }
+
+  if (invalidProject) {
+    return {
+      valid: false,
+      total,
+      message: "Project ratios must be whole numbers from 0 to 100.",
     };
   }
 
@@ -93,6 +111,7 @@ export function validateProjectRatios(
 export function calculateProjectCellQuotas(
   projects: ProjectRecord[],
   paintableCellCount: number,
+  paintedUsage = new Map<string, number>(),
 ): ProjectQuota[] {
   const totalRatio = getProjectRatioTotal(projects);
   const quotaInputs = projects.map((project, index) => {
@@ -127,19 +146,26 @@ export function calculateProjectCellQuotas(
     }
   }
 
-  return quotaInputs.map(({ project, rawCells, quotaCells }) => ({
-    projectId: project.id,
-    projectName: project.name,
-    color: project.color,
-    ratio: project.ratio,
-    rawCells,
-    quotaCells,
-    paintedCells: 0,
-    remainingCells: quotaCells,
-  }));
+  return quotaInputs.map(({ project, rawCells, quotaCells }) => {
+    const paintedCells = paintedUsage.get(project.id) ?? 0;
+
+    return {
+      projectId: project.id,
+      projectName: project.name,
+      color: project.color,
+      ratio: project.ratio,
+      rawCells,
+      quotaCells,
+      paintedCells,
+      remainingCells: Math.max(0, quotaCells - paintedCells),
+    };
+  });
 }
 
-export function getProjectUsageFromSlots(day: DayRecord): ProjectUsage[] {
+export function getProjectUsageFromSlots(
+  day: DayRecord,
+  projects: ProjectRecord[] = getGlobalProjects(),
+): ProjectUsage[] {
   const taskById = new Map(day.tasks.map((task) => [task.id, task]));
   const paintedCellsByProject = new Map<string, number>();
 
@@ -151,7 +177,7 @@ export function getProjectUsageFromSlots(day: DayRecord): ProjectUsage[] {
     }
 
     const task = taskById.get(cell.taskId);
-    const project = task ? getTaskProject(day, task) : null;
+    const project = task ? getTaskProject(day, task, projects) : null;
 
     if (!project) {
       continue;
@@ -164,21 +190,17 @@ export function getProjectUsageFromSlots(day: DayRecord): ProjectUsage[] {
   }
 
   return calculateProjectCellQuotas(
-    day.projects,
+    projects,
     getPaintableCellIndices(day.slots).length,
+    paintedCellsByProject,
   ).map((quota) => {
-    const paintedCells = paintedCellsByProject.get(quota.projectId) ?? 0;
-    const remainingCells = Math.max(0, quota.quotaCells - paintedCells);
-
     return {
       ...quota,
-      paintedCells,
-      remainingCells,
-      overQuota: paintedCells > quota.quotaCells,
+      overQuota: quota.paintedCells > quota.quotaCells,
       percentOfQuotaUsed:
         quota.quotaCells === 0
           ? 0
-          : Math.round((paintedCells / quota.quotaCells) * 1000) / 10,
+          : Math.round((quota.paintedCells / quota.quotaCells) * 1000) / 10,
     };
   });
 }
@@ -186,24 +208,65 @@ export function getProjectUsageFromSlots(day: DayRecord): ProjectUsage[] {
 export function getProjectById(
   day: DayRecord,
   projectId: string,
+  projects: ProjectRecord[] = getGlobalProjects(),
 ): ProjectRecord | null {
-  return day.projects.find((project) => project.id === projectId) ?? null;
+  const activeProject =
+    projects.find((project) => project.id === projectId) ??
+    projects.find(
+      (project) => project.id === normalizeGlobalProjectId(projectId),
+    );
+
+  if (activeProject) {
+    return activeProject;
+  }
+
+  const deprecatedProject =
+    day.projects.find((project) => project.id === projectId) ?? null;
+  const mappedDeprecatedProjectId = deprecatedProject
+    ? normalizeGlobalProjectId(deprecatedProject.id, deprecatedProject.name)
+    : null;
+
+  return (
+    projects.find((project) => project.id === mappedDeprecatedProjectId) ??
+    deprecatedProject
+  );
 }
 
 export function getTaskProject(
   day: DayRecord,
   task: TaskRecord,
+  projects: ProjectRecord[] = getGlobalProjects(),
 ): ProjectRecord | null {
-  return getProjectById(day, task.projectId);
+  const mappedProjectId = normalizeGlobalProjectId(
+    task.projectId,
+    task.projectName,
+  );
+  const project = mappedProjectId
+    ? projects.find((candidate) => candidate.id === mappedProjectId)
+    : null;
+
+  return project ?? getProjectById(day, task.projectId, projects);
 }
 
-export function getTaskProjectName(day: DayRecord, task: TaskRecord): string {
-  return getTaskProject(day, task)?.name ?? task.projectName ?? "Untitled Project";
-}
-
-export function getTaskProjectColor(day: DayRecord, task: TaskRecord): string {
+export function getTaskProjectName(
+  day: DayRecord,
+  task: TaskRecord,
+  projects: ProjectRecord[] = getGlobalProjects(),
+): string {
   return (
-    getTaskProject(day, task)?.color ??
+    getTaskProject(day, task, projects)?.name ??
+    task.projectName ??
+    "Untitled Project"
+  );
+}
+
+export function getTaskProjectColor(
+  day: DayRecord,
+  task: TaskRecord,
+  projects: ProjectRecord[] = getGlobalProjects(),
+): string {
+  return (
+    getTaskProject(day, task, projects)?.color ??
     getFallbackTaskColor(task.color) ??
     PROJECT_COLORS[0].hex
   );
@@ -213,7 +276,15 @@ export function getProjectTaskCount(
   day: DayRecord,
   projectId: string,
 ): number {
-  return day.tasks.filter((task) => task.projectId === projectId).length;
+  const normalizedProjectId = normalizeGlobalProjectId(projectId) ?? projectId;
+
+  return day.tasks.filter((task) => {
+    const taskProjectId =
+      normalizeGlobalProjectId(task.projectId, task.projectName) ??
+      task.projectId;
+
+    return taskProjectId === normalizedProjectId;
+  }).length;
 }
 
 export function canDeleteProject(

@@ -13,7 +13,7 @@ import { GenerateImagePanel } from "@/components/generate-image-panel";
 import { InlineMessage } from "@/components/inline-message";
 import { JournalView } from "@/components/journal-view";
 import { PomodoroPanel } from "@/components/pomodoro-panel";
-import { ProjectForm } from "@/components/project-form";
+import { ProjectRatioForm } from "@/components/project-form";
 import { ProjectList } from "@/components/project-list";
 import { RandomEventForm } from "@/components/random-event-form";
 import { SleepForm } from "@/components/sleep-form";
@@ -21,17 +21,21 @@ import { StoryModeView } from "@/components/story-mode-view";
 import { TaskForm } from "@/components/task-form";
 import { TaskList } from "@/components/task-list";
 import { useDayRecord } from "@/hooks/use-day-record";
-import { createTimeBlock } from "@/lib/blocks";
+import { applyRandomEventReplan, createTimeBlock } from "@/lib/blocks";
 import { getCellState } from "@/lib/cells";
 import { summarizeCanvas, summarizeSlots } from "@/lib/canvas-segments";
 import { formatSeconds, getPomodoroState } from "@/lib/pomodoro";
 import {
   getProjectRatioTotal,
   getProjectUsageFromSlots,
-  removeProject,
   validateProjectRatios,
 } from "@/lib/projects";
 import { rebuildDaySlots } from "@/lib/rebuild";
+import {
+  getDefaultSettings,
+  loadSettings,
+  updateProjectRatios,
+} from "@/lib/settings";
 import { createTaskRecord, type TaskRecordInput } from "@/lib/tasks";
 import { getTodayDateKey } from "@/lib/time";
 import type {
@@ -50,7 +54,7 @@ type DrawerTab = "projects" | "paint" | "unavailable" | "review";
 type MobileTab = "canvas" | "projects" | "paint" | "review";
 
 const drawerTabs: { id: DrawerTab; label: string }[] = [
-  { id: "projects", label: "Your Projects" },
+  { id: "projects", label: "Ratios" },
   { id: "paint", label: "Paint" },
   { id: "unavailable", label: "Unavailable Time" },
   { id: "review", label: "Today’s Review" },
@@ -58,7 +62,7 @@ const drawerTabs: { id: DrawerTab; label: string }[] = [
 
 const mobileTabs: { id: MobileTab; label: string }[] = [
   { id: "canvas", label: "Canvas" },
-  { id: "projects", label: "Projects" },
+  { id: "projects", label: "Ratios" },
   { id: "paint", label: "Paint" },
   { id: "review", label: "Review" },
 ];
@@ -75,11 +79,12 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
     useState<DrawerTab>("projects");
   const [activeMobileTab, setActiveMobileTab] =
     useState<MobileTab>("canvas");
-  const [projectFormOpen, setProjectFormOpen] = useState(false);
+  const [settings, setSettings] = useState(() => getDefaultSettings());
   const [now, setNow] = useState<Date | null>(null);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const { day, status, editable, loading, saveDay, resetDay, importDay } =
     useDayRecord(selectedDateKey);
+  const projects = settings.projects;
 
   const slotSummaries = useMemo(() => {
     const slots = day?.slots ?? [];
@@ -91,23 +96,23 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
     };
   }, [day]);
   const ratioValidation = useMemo(
-    () => validateProjectRatios(day?.projects ?? []),
-    [day],
+    () => validateProjectRatios(projects),
+    [projects],
   );
   const projectUsage = useMemo(
-    () => (day ? getProjectUsageFromSlots(day) : []),
-    [day],
+    () => (day ? getProjectUsageFromSlots(day, projects) : []),
+    [day, projects],
   );
   const selectedProjectUsage = projectUsage.find(
     (usage) => usage.projectId === selectedProjectId,
   );
   const selectedProject =
-    day?.projects.find((project) => project.id === selectedProjectId) ?? null;
+    projects.find((project) => project.id === selectedProjectId) ?? null;
   const remainingQuotaCells = selectedProjectUsage?.remainingCells ?? 0;
   const manualPaintingActive = taskInputMode === "manual-cell";
   const pomodoroState = now ? getPomodoroState(now) : null;
-  const totalRatio = getProjectRatioTotal(day?.projects ?? []);
-  const hasProjects = !!day?.projects.length;
+  const totalRatio = getProjectRatioTotal(projects);
+  const hasProjects = projects.length > 0;
   const activePanelTab: DrawerTab = isDesktop
     ? activeDrawerTab
     : activeMobileTab === "projects"
@@ -131,6 +136,10 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
   }, [selectedDateKey]);
 
   useEffect(() => {
+    setSettings(loadSettings());
+  }, []);
+
+  useEffect(() => {
     setNow(new Date());
 
     const intervalId = window.setInterval(() => {
@@ -141,15 +150,15 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
   }, []);
 
   useEffect(() => {
-    if (!day?.projects.length) {
+    if (!projects.length) {
       setSelectedProjectId("");
       return;
     }
 
-    if (!day.projects.some((project) => project.id === selectedProjectId)) {
-      setSelectedProjectId(day.projects[0].id);
+    if (!projects.some((project) => project.id === selectedProjectId)) {
+      setSelectedProjectId(projects[0].id);
     }
-  }, [day, selectedProjectId]);
+  }, [projects, selectedProjectId]);
 
   function handleResetToday() {
     if (
@@ -163,10 +172,9 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
     }
   }
 
-  function openProjectsPanelForNewProject() {
+  function openProjectsPanel() {
     setActiveDrawerTab("projects");
     setActiveMobileTab("projects");
-    setProjectFormOpen(true);
   }
 
   function openPaintPanel() {
@@ -174,44 +182,15 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
     setActiveMobileTab("paint");
   }
 
-  function handleAddProject(project: ProjectRecord) {
-    if (!day || !editable) {
+  function handleUpdateProjectRatios(ratios: Record<string, number>) {
+    if (!editable) {
       return;
     }
 
-    saveDay({
-      ...day,
-      projects: [...day.projects, project],
-      updatedAt: new Date().toISOString(),
-    });
-    setSelectedProjectId(project.id);
-  }
-
-  function handleDeleteProject(projectId: string) {
-    if (!day || !editable) {
-      return;
-    }
-
-    const project = day.projects.find((candidate) => candidate.id === projectId);
-    const taskCount = day.tasks.filter((task) => task.projectId === projectId).length;
-    const confirmed = window.confirm(
-      taskCount > 0
-        ? `Delete ${project?.name ?? "this project"} and ${taskCount} related task${taskCount === 1 ? "" : "s"}?`
-        : `Delete ${project?.name ?? "this project"}?`,
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    const nextDay = rebuildDaySlots(removeProject(day, projectId));
-
-    saveDay(nextDay);
+    const nextSettings = updateProjectRatios(ratios);
+    setSettings(nextSettings);
     setSelectedCellIndices([]);
-
-    if (selectedProjectId === projectId) {
-      setSelectedProjectId(nextDay.projects[0]?.id ?? "");
-    }
+    setCellError("");
   }
 
   function handleAddSleep(input: {
@@ -252,12 +231,7 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
       ...input,
     });
 
-    saveDay(
-      rebuildDaySlots({
-        ...day,
-        randomEventBlocks: [...day.randomEventBlocks, randomEventBlock],
-      }),
-    );
+    saveDay(applyRandomEventReplan(day, randomEventBlock));
     setSelectedCellIndices([]);
   }
 
@@ -414,13 +388,13 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
         ) : null}
 
         {!hasProjects ? (
-          <WelcomeCard onAddFirstProject={openProjectsPanelForNewProject} />
+          <WelcomeCard onOpenProjects={openProjectsPanel} />
         ) : null}
 
         {hasProjects && !ratioValidation.valid ? (
           <RatioIncompleteCallout
             totalRatio={totalRatio}
-            onOpenProjects={openProjectsPanelForNewProject}
+            onOpenProjects={openProjectsPanel}
           />
         ) : null}
 
@@ -473,44 +447,28 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
         <PanelStack>
           <PanelHeading
             eyebrow="Step 1"
-            title="Your Projects"
-            description="Add projects and make their ratios add up to 100%."
+            title="Daily Ratios"
+            description="Set your daily ratios for the three fixed projects."
           />
           <ProjectList
             day={day}
+            projects={projects}
             editable={editable}
-            onDeleteProject={handleDeleteProject}
           />
           <RatioProgress totalRatio={totalRatio} />
           {hasProjects && !ratioValidation.valid ? (
             <InlineMessage type="warning">
-              Your project ratios are not complete yet. Finish them before
-              painting.
+              Your project ratios must total 100 before painting.
             </InlineMessage>
           ) : null}
           {editable ? (
-            <>
-              <button
-                type="button"
-                onClick={() => setProjectFormOpen((open) => !open)}
-                className="min-h-12 border-2 border-[#1A1A1A] bg-[#FFD91A] px-5 py-3 text-sm font-black shadow-[4px_4px_0_#1A1A1A] transition hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#1A1A1A] focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]"
-              >
-                {projectFormOpen
-                  ? "Hide Project Form"
-                  : hasProjects
-                    ? "Add Project"
-                    : "Add First Project"}
-              </button>
-              {projectFormOpen ? (
-                <ProjectForm
-                  projects={day?.projects ?? []}
-                  onAddProject={handleAddProject}
-                />
-              ) : null}
-            </>
+            <ProjectRatioForm
+              projects={projects}
+              onUpdateRatios={handleUpdateProjectRatios}
+            />
           ) : (
             <InlineMessage type="info">
-              This date is read-only. Project editing is disabled.
+              This date is read-only. Ratio editing is disabled.
             </InlineMessage>
           )}
         </PanelStack>
@@ -530,21 +488,21 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
           </InlineMessage>
           {!hasProjects ? (
             <ActionCard
-              title="Add projects first"
-              description="Start with your project list, then come back here to paint your day."
-              actionLabel="Add First Project"
-              onAction={openProjectsPanelForNewProject}
+              title="Project settings unavailable"
+              description="Open the ratios panel and reload the fixed project settings."
+              actionLabel="Open Ratios"
+              onAction={openProjectsPanel}
             />
           ) : null}
           {hasProjects && !ratioValidation.valid ? (
             <RatioIncompleteCallout
               totalRatio={totalRatio}
-              onOpenProjects={openProjectsPanelForNewProject}
+              onOpenProjects={openProjectsPanel}
             />
           ) : null}
           {editable && hasProjects && ratioValidation.valid ? (
             <TaskForm
-              projects={day?.projects ?? []}
+              projects={projects}
               slots={day?.slots ?? []}
               selectedCellIndices={selectedCellIndices}
               selectedProjectId={selectedProjectId}
@@ -671,6 +629,7 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
           <DayDebugPanel
             dateKey={selectedDateKey}
             day={day}
+            projects={projects}
             status={status}
             editable={editable}
             loading={loading}
@@ -827,9 +786,9 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
 type ProjectUsage = ReturnType<typeof getProjectUsageFromSlots>[number];
 
 function WelcomeCard({
-  onAddFirstProject,
+  onOpenProjects,
 }: {
-  onAddFirstProject: () => void;
+  onOpenProjects: () => void;
 }) {
   return (
     <section className="rounded-lg border-2 border-[#1A1A1A] bg-white p-5 shadow-[4px_4px_0_#1A1A1A]">
@@ -838,16 +797,16 @@ function WelcomeCard({
       </p>
       <h2 className="mt-1 text-2xl font-black">Start in 3 steps:</h2>
       <ol className="mt-3 grid gap-2 text-sm font-black">
-        <li>1. Add projects</li>
+        <li>1. Set daily ratios</li>
         <li>2. Make total ratio 100%</li>
         <li>3. Paint your day</li>
       </ol>
       <button
         type="button"
-        onClick={onAddFirstProject}
+        onClick={onOpenProjects}
         className="mt-4 min-h-12 border-2 border-[#1A1A1A] bg-[#FFD91A] px-5 py-3 text-sm font-black shadow-[4px_4px_0_#1A1A1A] transition hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#1A1A1A] focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]"
       >
-        Add First Project
+        Set Ratios
       </button>
     </section>
   );
@@ -901,7 +860,7 @@ function RatioIncompleteCallout({
         onClick={onOpenProjects}
         className="mt-4 min-h-11 border-2 border-[#1A1A1A] bg-white px-4 py-2 text-sm font-black shadow-[3px_3px_0_#1A1A1A] focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]"
       >
-        Go to Projects
+        Go to Ratios
       </button>
     </section>
   );
@@ -1220,6 +1179,12 @@ function SelectedProjectQuotaStrip({
           Selected now: <span className="font-black">{selectedCellCount}</span>
         </p>
       </div>
+
+      {usage?.overQuota ? (
+        <InlineMessage type="warning" className="mt-3">
+          Over quota because the day changed.
+        </InlineMessage>
+      ) : null}
     </section>
   );
 }

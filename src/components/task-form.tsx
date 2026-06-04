@@ -100,7 +100,7 @@ export function TaskForm({
 
     try {
       if (!selectedProject) {
-        throw new Error("Create projects and ratios first.");
+        throw new Error("Project settings are not available.");
       }
 
       if (!quotaReady) {
@@ -208,13 +208,13 @@ export function TaskForm({
 
       {projects.length === 0 ? (
         <InlineMessage type="warning" className="mt-4">
-          Add projects first. Ratios must total 100 before painting.
+          Project settings are not available. Open the ratios panel.
         </InlineMessage>
       ) : null}
 
       {!quotaReady && projects.length > 0 ? (
         <InlineMessage type="warning" className="mt-4">
-          Your project ratios are not complete yet. Finish them before painting.
+          Your project ratios must total 100 before painting.
         </InlineMessage>
       ) : null}
 

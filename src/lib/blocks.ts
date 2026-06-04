@@ -1,10 +1,11 @@
 import { BLACK_CANVAS } from "@/lib/palette";
+import { getCellIndicesForMinutes } from "@/lib/cells";
 import { rebuildDaySlots } from "@/lib/rebuild";
 import {
   MINUTES_PER_DAY,
   validateMinuteOfDay,
 } from "@/lib/time";
-import type { CanvasSlot, DayRecord, TimeBlock } from "@/types/canvas";
+import type { CanvasSlot, DayRecord, TaskRecord, TimeBlock } from "@/types/canvas";
 
 type TimeBlockInput = {
   type: "sleep" | "random-event";
@@ -83,6 +84,56 @@ export function removeBlockAndRebuildSlots(
 
 export function rebuildBlackSlots(day: DayRecord): DayRecord {
   return rebuildDaySlots(day);
+}
+
+export function applyRandomEventReplan(
+  day: DayRecord,
+  randomEventBlock: TimeBlock,
+): DayRecord {
+  const boundaryMinute = randomEventBlock.endMinute;
+
+  return rebuildDaySlots({
+    ...day,
+    randomEventBlocks: [...day.randomEventBlocks, randomEventBlock],
+    tasks: day.tasks
+      .map((task) => trimTaskAtBoundary(task, boundaryMinute))
+      .filter((task): task is TaskRecord => !!task),
+  });
+}
+
+function trimTaskAtBoundary(
+  task: TaskRecord,
+  boundaryMinute: number,
+): TaskRecord | null {
+  // Wrapped random events use their end minute as the MVP boundary.
+  const assignedMinutes = (task.assignedMinutes ?? []).filter(
+    (minute) => minute < boundaryMinute,
+  );
+
+  if (assignedMinutes.length === 0) {
+    return null;
+  }
+
+  const assignedCellDuration =
+    getCellIndicesForMinutes(assignedMinutes).length * 30;
+  const endMinute =
+    task.inputMode === "time-range" &&
+    typeof task.startMinute === "number" &&
+    typeof task.endMinute === "number" &&
+    task.startMinute < task.endMinute
+      ? Math.min(task.endMinute, boundaryMinute)
+      : task.endMinute;
+
+  return {
+    ...task,
+    assignedMinutes,
+    effectivePaintedMinutes: undefined,
+    durationMinutes:
+      task.inputMode === "duration"
+        ? assignedCellDuration
+        : task.durationMinutes,
+    endMinute,
+  };
 }
 
 function validateBlockRange(startMinute: number, endMinute: number): void {

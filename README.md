@@ -8,13 +8,16 @@ Canvas Ratio treats each day like a drawing book. White space is free time, blac
 
 - White = free time.
 - Black = unavailable time.
-- Colors = projects and tasks.
+- Colors = the fixed global projects and their tasks.
+- Projects are global settings: Academic, Professional, and Personal.
 - Ratios apply only to the non-black canvas.
 - Each day has 48 visible cells.
 - Each cell is 30 minutes.
 - Internally, the app stores 1440 minute slots for accurate rebuilds.
 
-Project ratios must total exactly 100 before painting. Black cells are excluded first, then project quotas are calculated from the remaining paintable cells using largest-remainder rounding.
+The default project ratios are Academic 50, Professional 30, and Personal 20. Users adjust those global ratios, and the total must be exactly 100 before painting. Black cells are excluded first, then project quotas are calculated from the remaining paintable cells using largest-remainder rounding.
+
+When a random event is added, its time range becomes black and colored task cells after the event end are cleared back to free time. Existing black blocks are preserved, and colored cells before the interruption still count against the recalculated project quota.
 
 ## Features
 
@@ -26,7 +29,8 @@ Project ratios must total exactly 100 before painting. Black cells are excluded 
 - Project ratios and quota-based painting.
 - Project/task separation.
 - Sleep and random events as black canvas.
-- Black blocks override colored cells without deleting task assignments.
+- Random events replan the remaining day by clearing colored task assignments after the event end.
+- Sleep blocks and existing random-event blocks stay black during replans.
 - Deleting black blocks restores covered colors when assignments still exist.
 - Automatic clock-based Pomodoro 25/5 rhythm.
 - Local JSON export/import backup tools.
@@ -47,6 +51,14 @@ Canvas Ratio stores one `DayRecord` per date in browser localStorage:
 ```text
 canvas-ratio:v1:{YYYY-MM-DD}
 ```
+
+Global project settings are stored separately:
+
+```text
+canvas-ratio:settings
+```
+
+Day records no longer require per-day projects. Older records with embedded projects can still load, and old task project names such as Academic, Professional, Work, and Personal are normalized to the fixed global project IDs when possible.
 
 The Backup Tools panel can:
 

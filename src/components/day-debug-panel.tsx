@@ -9,11 +9,17 @@ import type { DayStatus } from "@/lib/day";
 import { getProjectUsageFromSlots, validateProjectRatios } from "@/lib/projects";
 import { getDayStorageKey } from "@/lib/storage";
 import { getTaskEffectivePaintedMinutes } from "@/lib/tasks";
-import type { CanvasSlotState, DayRecord, TimeBlock } from "@/types/canvas";
+import type {
+  CanvasSlotState,
+  DayRecord,
+  ProjectRecord,
+  TimeBlock,
+} from "@/types/canvas";
 
 type DayDebugPanelProps = {
   dateKey: string;
   day: DayRecord | null;
+  projects: ProjectRecord[];
   status: DayStatus;
   editable: boolean;
   loading: boolean;
@@ -22,13 +28,14 @@ type DayDebugPanelProps = {
 export function DayDebugPanel({
   dateKey,
   day,
+  projects,
   status,
   editable,
   loading,
 }: DayDebugPanelProps) {
   const slots = day?.slots ?? [];
-  const ratioValidation = validateProjectRatios(day?.projects ?? []);
-  const projectUsage = day ? getProjectUsageFromSlots(day) : [];
+  const ratioValidation = validateProjectRatios(projects);
+  const projectUsage = day ? getProjectUsageFromSlots(day, projects) : [];
   const whiteSlotCount = countSlotsByState(day, "white");
   const blackSlotCount = countSlotsByState(day, "black");
   const coloredSlotCount = countSlotsByState(day, "colored");
@@ -67,7 +74,7 @@ export function DayDebugPanel({
     ["Black cells", String(getBlackCellIndices(slots).length)],
     ["Colored cells", String(getColoredCellIndices(slots).length)],
     ["Paintable cells", String(getPaintableCellIndices(slots).length)],
-    ["Projects", String(day?.projects.length ?? 0)],
+    ["Projects", String(projects.length)],
     ["Ratio total", `${ratioValidation.total}/100`],
     ["Ratio ready", String(ratioValidation.valid)],
     ["Quota cells", String(quotaCellTotal)],

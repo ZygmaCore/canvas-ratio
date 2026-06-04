@@ -30,7 +30,7 @@ export type ProjectRecord = {
   color: string;
   ratio: number;
   description?: string;
-  createdAt: string;
+  createdAt?: string;
 };
 
 export type TaskInputMode = "manual-cell" | "ratio" | "time-range" | "duration";

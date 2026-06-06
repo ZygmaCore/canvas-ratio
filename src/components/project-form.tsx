@@ -53,7 +53,7 @@ export function ProjectRatioForm({
     <form
       onSubmit={handleSubmit}
       data-testid="project-ratio-form"
-      className="rounded-lg border-2 border-[#1A1A1A] bg-[#FFFFFF] p-5 shadow-[4px_4px_0_#1A1A1A]"
+      className="animate-panel-enter rounded-lg border-2 border-[#1A1A1A] bg-[#FFFFFF] p-5 shadow-[4px_4px_0_#1A1A1A]"
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
@@ -75,11 +75,11 @@ export function ProjectRatioForm({
         {projects.map((project) => (
           <label
             key={project.id}
-            className="grid gap-3 border-2 border-[#1A1A1A] bg-[#FBFBF7] p-4 sm:grid-cols-[minmax(0,1fr)_120px] sm:items-center"
+            className="project-card grid gap-3 border-2 border-[#1A1A1A] bg-[#FBFBF7] p-4 sm:grid-cols-[minmax(0,1fr)_120px] sm:items-center"
           >
             <span className="flex min-w-0 items-center gap-3">
               <span
-                className="h-6 w-6 shrink-0 rounded-full border-2 border-[#1A1A1A]"
+                className="project-color-dot h-6 w-6 shrink-0 rounded-full border-2 border-[#1A1A1A]"
                 style={{ backgroundColor: project.color }}
                 aria-hidden="true"
               />
@@ -114,7 +114,7 @@ export function ProjectRatioForm({
                     [project.id]: event.currentTarget.value,
                   }))
                 }
-                className="min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
+                className="min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:bg-[#FFD7BF]"
               />
             </span>
           </label>
@@ -132,7 +132,7 @@ export function ProjectRatioForm({
         type="submit"
         disabled={disabled}
         data-testid="save-project-ratios"
-        className="mt-4 min-h-11 border-2 border-[#1A1A1A] bg-[#2F5FBF] px-4 py-2 text-sm font-black text-[#FFFFFF] shadow-[3px_3px_0_#FFD91A] disabled:cursor-not-allowed disabled:bg-[#8B4A3A]"
+        className="mt-4 min-h-11 border-2 border-[#1A1A1A] bg-[#2F5FBF] px-4 py-2 text-sm font-black text-[#FFFFFF] shadow-[3px_3px_0_#FFD91A] transition hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#FFD91A] focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:cursor-not-allowed disabled:bg-[#8B4A3A]"
       >
         Save Ratios
       </button>

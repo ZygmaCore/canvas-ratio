@@ -114,11 +114,6 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
       : activeMobileTab === "review"
         ? "review"
         : activeDrawerTab;
-  const canvasIsEmpty =
-    !!day &&
-    slotSummaries.fullDaySummary.totalMinutes > 0 &&
-    slotSummaries.fullDaySummary.blackMinutes === 0 &&
-    slotSummaries.fullDaySummary.coloredMinutes === 0;
 
   useEffect(() => {
     setSelectedCellIndices([]);
@@ -166,11 +161,6 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
   function openProjectsPanel() {
     setActiveDrawerTab("projects");
     setActiveMobileTab("projects");
-  }
-
-  function openPaintPanel() {
-    setActiveDrawerTab("paint");
-    setActiveMobileTab("paint");
   }
 
   function handleUpdateProjectRatios(ratios: Record<string, number>) {
@@ -385,19 +375,11 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
           </InlineMessage>
         ) : null}
 
-        {!hasProjects ? (
-          <WelcomeCard onOpenProjects={openProjectsPanel} />
-        ) : null}
-
         {hasProjects && !ratioValidation.valid ? (
           <RatioIncompleteCallout
             totalRatio={totalRatio}
             onOpenProjects={openProjectsPanel}
           />
-        ) : null}
-
-        {hasProjects && ratioValidation.valid && canvasIsEmpty ? (
-          <ReadyToPaintCallout onStartPainting={openPaintPanel} />
         ) : null}
 
         <section className="grid min-w-0 gap-4 xl:grid-cols-2">
@@ -454,6 +436,7 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
             day={day}
             projects={projects}
             editable={editable}
+            selectedProjectId={selectedProjectId}
           />
           <RatioProgress totalRatio={totalRatio} />
           {hasProjects && !ratioValidation.valid ? (
@@ -757,33 +740,6 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
 
 type ProjectUsage = ReturnType<typeof getProjectUsageFromSlots>[number];
 
-function WelcomeCard({
-  onOpenProjects,
-}: {
-  onOpenProjects: () => void;
-}) {
-  return (
-    <section className="rounded-lg border-2 border-[#1A1A1A] bg-white p-5 shadow-[4px_4px_0_#1A1A1A]">
-      <p className="text-xs font-black uppercase text-[#2F5FBF]">
-        Welcome
-      </p>
-      <h2 className="mt-1 text-2xl font-black">Start in 3 steps:</h2>
-      <ol className="mt-3 grid gap-2 text-sm font-black">
-        <li>1. Set daily ratios</li>
-        <li>2. Make total ratio 100%</li>
-        <li>3. Paint your day</li>
-      </ol>
-      <button
-        type="button"
-        onClick={onOpenProjects}
-        className="mt-4 min-h-12 border-2 border-[#1A1A1A] bg-[#FFD91A] px-5 py-3 text-sm font-black shadow-[4px_4px_0_#1A1A1A] transition hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#1A1A1A] focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]"
-      >
-        Set Ratios
-      </button>
-    </section>
-  );
-}
-
 function ActionCard({
   title,
   description,
@@ -796,7 +752,7 @@ function ActionCard({
   onAction: () => void;
 }) {
   return (
-    <section className="rounded-lg border-2 border-[#1A1A1A] bg-white p-4 shadow-[4px_4px_0_#1A1A1A]">
+    <section className="animate-panel-enter rounded-lg border-2 border-[#1A1A1A] bg-white p-4 shadow-[4px_4px_0_#1A1A1A]">
       <h3 className="text-lg font-black">{title}</h3>
       <p className="mt-2 text-sm font-bold text-[#4a4a4a]">
         {description}
@@ -820,7 +776,7 @@ function RatioIncompleteCallout({
   onOpenProjects: () => void;
 }) {
   return (
-    <section className="rounded-lg border-2 border-[#1A1A1A] bg-[#FFD7BF] p-4 shadow-[4px_4px_0_#1A1A1A]">
+    <section className="animate-panel-enter rounded-lg border-2 border-[#1A1A1A] bg-[#FFD7BF] p-4 shadow-[4px_4px_0_#1A1A1A]">
       <h3 className="text-lg font-black">
         Your project ratios are not complete yet.
       </h3>
@@ -833,28 +789,6 @@ function RatioIncompleteCallout({
         className="mt-4 min-h-11 border-2 border-[#1A1A1A] bg-white px-4 py-2 text-sm font-black shadow-[3px_3px_0_#1A1A1A] focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]"
       >
         Go to Ratios
-      </button>
-    </section>
-  );
-}
-
-function ReadyToPaintCallout({
-  onStartPainting,
-}: {
-  onStartPainting: () => void;
-}) {
-  return (
-    <section className="rounded-lg border-2 border-[#1A1A1A] bg-[#6FB6FF] p-4 shadow-[4px_4px_0_#1A1A1A]">
-      <h3 className="text-lg font-black">Ready to paint.</h3>
-      <p className="mt-2 text-sm font-bold">
-        Click white cells to paint. Click colored cells to clear them.
-      </p>
-      <button
-        type="button"
-        onClick={onStartPainting}
-        className="mt-4 min-h-11 border-2 border-[#1A1A1A] bg-white px-4 py-2 text-sm font-black shadow-[3px_3px_0_#1A1A1A] focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]"
-      >
-        Start Painting
       </button>
     </section>
   );
@@ -1073,7 +1007,7 @@ function RatioProgress({ totalRatio }: { totalRatio: number }) {
       </div>
       <div className="mt-3 h-4 border-2 border-[#1A1A1A] bg-[#FBFBF7]">
         <div
-          className="h-full bg-[#FFD91A]"
+          className="animate-quota-fill h-full bg-[#FFD91A]"
           style={{ width: `${cappedRatio}%` }}
           aria-hidden="true"
         />
@@ -1103,7 +1037,12 @@ function SelectedProjectQuotaStrip({
       : 0;
 
   return (
-    <section className="rounded-lg border-2 border-[#1A1A1A] bg-white p-4 shadow-[4px_4px_0_#1A1A1A]">
+    <section
+      className="rounded-lg border-2 border-[#1A1A1A] bg-white p-4 shadow-[4px_4px_0_#1A1A1A] transition-colors"
+      style={{
+        borderColor: project?.color ?? "#1A1A1A",
+      }}
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-black uppercase text-[#2F5FBF]">
@@ -1111,7 +1050,8 @@ function SelectedProjectQuotaStrip({
           </p>
           <div className="mt-2 flex min-w-0 items-center gap-3">
             <span
-              className="h-7 w-7 shrink-0 rounded-full border-2 border-[#1A1A1A]"
+              key={project?.id ?? "empty-project-dot"}
+              className="selected-project-dot h-7 w-7 shrink-0 rounded-full border-2 border-[#1A1A1A]"
               style={{ backgroundColor: project?.color ?? "#FFFFFF" }}
               aria-hidden="true"
             />
@@ -1131,7 +1071,7 @@ function SelectedProjectQuotaStrip({
 
       <div className="mt-3 h-4 border-2 border-[#1A1A1A] bg-[#FBFBF7]">
         <div
-          className="h-full bg-[#2F5FBF]"
+          className="animate-quota-fill h-full bg-[#2F5FBF]"
           style={{ width: `${progress}%` }}
           aria-hidden="true"
         />
@@ -1144,7 +1084,7 @@ function SelectedProjectQuotaStrip({
             {paintedCells}/{quotaCells}
           </span>
         </p>
-        <p>
+        <p key={`remaining-${remainingCells}`} className="animate-soft-fade">
           Remaining: <span className="font-black">{remainingCells}</span>
         </p>
         <p>
@@ -1153,7 +1093,7 @@ function SelectedProjectQuotaStrip({
       </div>
 
       {usage?.overQuota ? (
-        <InlineMessage type="warning" className="mt-3">
+        <InlineMessage type="warning" className="animate-attention-once mt-3">
           Over quota by {usage.overQuotaCells}{" "}
           {usage.overQuotaCells === 1 ? "cell" : "cells"} because the canvas
           changed.

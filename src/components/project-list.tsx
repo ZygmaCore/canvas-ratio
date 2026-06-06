@@ -9,12 +9,14 @@ type ProjectListProps = {
   day: DayRecord | null;
   projects: DayRecord["projects"];
   editable: boolean;
+  selectedProjectId?: string;
 };
 
 export function ProjectList({
   day,
   projects,
   editable,
+  selectedProjectId,
 }: ProjectListProps) {
   const usage = day ? getProjectUsageFromSlots(day, projects) : [];
 
@@ -44,17 +46,22 @@ export function ProjectList({
             (usageItem) => usageItem.projectId === project.id,
           );
           const taskCount = day ? getProjectTaskCount(day, project.id) : 0;
+          const selected = project.id === selectedProjectId;
 
           return (
             <article
               key={project.id}
-              className="border-2 border-[#1A1A1A] bg-[#FBFBF7] p-4"
+              className={`project-card border-2 border-[#1A1A1A] p-4 ${
+                selected
+                  ? "project-card--selected"
+                  : "bg-[#FBFBF7] hover:bg-white"
+              }`}
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <div className="flex min-w-0 items-center gap-3">
                     <span
-                      className="h-6 w-6 shrink-0 rounded-full border-2 border-[#1A1A1A]"
+                      className="project-color-dot h-6 w-6 shrink-0 rounded-full border-2 border-[#1A1A1A]"
                       style={{ backgroundColor: project.color }}
                       aria-hidden="true"
                     />
@@ -65,6 +72,7 @@ export function ProjectList({
                       <p className="text-sm font-bold text-[#2F5FBF]">
                         {project.ratio}% ratio / {taskCount} task
                         {taskCount === 1 ? "" : "s"}
+                        {selected ? " / selected" : ""}
                       </p>
                     </div>
                   </div>
@@ -91,7 +99,7 @@ export function ProjectList({
                   </div>
 
                   {projectUsage?.overQuota ? (
-                    <InlineMessage type="warning" className="mt-3">
+                    <InlineMessage type="warning" className="animate-attention-once mt-3">
                       Over quota by {projectUsage.overQuotaCells}{" "}
                       {projectUsage.overQuotaCells === 1 ? "cell" : "cells"}{" "}
                       because the canvas changed.

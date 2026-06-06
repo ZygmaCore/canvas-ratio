@@ -32,7 +32,7 @@ export function DayStatusBadge({ status, editable }: DayStatusBadgeProps) {
 
   return (
     <div
-      className={`w-fit border-2 border-[#1A1A1A] px-4 py-2 shadow-[3px_3px_0_#1A1A1A] ${content.className}`}
+      className={`w-fit border-2 border-[#1A1A1A] px-4 py-2 shadow-[3px_3px_0_#1A1A1A] transition-colors ${content.className}`}
     >
       <p className="text-xs font-black uppercase">{content.label}</p>
       <p className="text-base font-black">{description}</p>

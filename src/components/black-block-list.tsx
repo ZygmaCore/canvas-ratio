@@ -20,7 +20,7 @@ export function BlackBlockList({
   const hasBlocks = sleepBlocks.length > 0 || randomEventBlocks.length > 0;
 
   return (
-    <section className="rounded-lg border-2 border-[#1A1A1A] bg-[#FFFFFF] p-5 shadow-[4px_4px_0_#1A1A1A]">
+    <section className="animate-panel-enter rounded-lg border-2 border-[#1A1A1A] bg-[#FFFFFF] p-5 shadow-[4px_4px_0_#1A1A1A]">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-2xl font-black">Unavailable Time</h2>
@@ -79,7 +79,7 @@ function BlockSection({
         {blocks.map((block) => (
           <article
             key={block.id}
-            className="border-2 border-[#1A1A1A] bg-[#FBFBF7] p-4"
+            className="animate-soft-fade border-2 border-[#1A1A1A] bg-[#FBFBF7] p-4"
           >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
@@ -109,7 +109,7 @@ function BlockSection({
                   type="button"
                   onClick={() => onDeleteBlock(block.id)}
                   aria-label={`Delete ${block.title}`}
-                  className="min-h-10 shrink-0 border-2 border-[#1A1A1A] bg-[#D62828] px-3 py-2 text-sm font-black text-[#FFFFFF]"
+                  className="min-h-10 shrink-0 border-2 border-[#1A1A1A] bg-[#D62828] px-3 py-2 text-sm font-black text-[#FFFFFF] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]"
                 >
                   Delete
                 </button>

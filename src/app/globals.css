@@ -7,6 +7,7 @@
   --sun: #ffd91a;
   --sky: #6fb6ff;
   --leaf: #8bcf3f;
+  --peach: #ffd7bf;
 }
 
 * {
@@ -31,4 +32,270 @@ body {
 button,
 a {
   -webkit-tap-highlight-color: transparent;
+}
+
+.animate-cell-pop {
+  animation: cell-pop 160ms ease-out both;
+}
+
+.animate-soft-fade {
+  animation: soft-fade 180ms ease-out both;
+}
+
+.animate-soft-pulse {
+  animation: soft-pulse 900ms ease-out both;
+}
+
+.animate-quota-fill {
+  transition: width 220ms ease-out, background-color 180ms ease-out;
+}
+
+.animate-panel-enter {
+  animation: panel-enter 220ms ease-out both;
+}
+
+.animate-drawing-reveal {
+  animation: drawing-reveal 420ms ease-out both;
+}
+
+.animate-attention-once {
+  animation: attention-once 480ms ease-out both;
+}
+
+.cell-button {
+  position: relative;
+  overflow: hidden;
+  transform: translateZ(0);
+  transition:
+    transform 140ms ease-out,
+    box-shadow 140ms ease-out,
+    outline-color 140ms ease-out,
+    background-color 170ms ease-out,
+    opacity 140ms ease-out;
+}
+
+.cell-button::after {
+  position: absolute;
+  inset: 4px;
+  border: 2px solid transparent;
+  content: "";
+  pointer-events: none;
+  transition: border-color 140ms ease-out, opacity 140ms ease-out;
+  opacity: 0;
+}
+
+.cell-button--free:hover,
+.cell-button--free:focus-visible {
+  transform: translateY(-2px) scale(1.015);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.cell-button--free:hover::after,
+.cell-button--free:focus-visible::after {
+  border-color: var(--sky);
+  opacity: 1;
+}
+
+.cell-button--colored:hover,
+.cell-button--colored:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.cell-button--colored:hover::after,
+.cell-button--colored:focus-visible::after {
+  border-color: var(--sun);
+  opacity: 1;
+  animation: soft-pulse 900ms ease-out both;
+}
+
+.cell-button--black {
+  animation: black-cell-reveal 180ms ease-out both;
+  animation-delay: calc(var(--cell-stagger, 0) * 10ms);
+}
+
+.cell-button--colored {
+  animation: cell-pop 160ms ease-out both;
+}
+
+.cell-button--free {
+  animation: soft-fade 180ms ease-out both;
+}
+
+.project-card {
+  transition:
+    transform 160ms ease-out,
+    box-shadow 160ms ease-out,
+    background-color 160ms ease-out;
+}
+
+.project-card--selected {
+  background: #ffffff;
+  box-shadow: 4px 4px 0 var(--ink);
+  transform: translateY(-1px);
+}
+
+.project-color-dot {
+  transition: transform 160ms ease-out, box-shadow 160ms ease-out;
+}
+
+.project-card--selected .project-color-dot,
+.selected-project-dot {
+  animation: dot-pop 180ms ease-out both;
+}
+
+.pomodoro-panel {
+  transition:
+    background-color 220ms ease-out,
+    box-shadow 220ms ease-out;
+}
+
+.pomodoro-panel--focus {
+  background: #ffffff;
+}
+
+.pomodoro-panel--break {
+  background: #eef8ff;
+  box-shadow: 4px 4px 0 var(--sky);
+}
+
+.drawing-cue {
+  position: relative;
+  min-height: 72px;
+  overflow: hidden;
+  border: 2px solid var(--ink);
+  background:
+    linear-gradient(90deg, rgba(47, 95, 191, 0.08) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(47, 95, 191, 0.08) 1px, transparent 1px),
+    #ffffff;
+  background-size: 18px 18px;
+}
+
+.drawing-cue__dot {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  animation: drawing-reveal 520ms ease-out both;
+}
+
+.drawing-cue__dot:nth-child(1) {
+  left: 16%;
+  top: 22%;
+  background: var(--sun);
+}
+
+.drawing-cue__dot:nth-child(2) {
+  left: 42%;
+  top: 48%;
+  background: var(--sky);
+  animation-delay: 90ms;
+}
+
+.drawing-cue__dot:nth-child(3) {
+  left: 70%;
+  top: 28%;
+  background: var(--leaf);
+  animation-delay: 160ms;
+}
+
+@keyframes cell-pop {
+  0% {
+    transform: scale(0.97);
+  }
+  70% {
+    transform: scale(1.025);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes soft-fade {
+  0% {
+    opacity: 0.68;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes soft-pulse {
+  0% {
+    opacity: 0.35;
+  }
+  45% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.55;
+  }
+}
+
+@keyframes black-cell-reveal {
+  0% {
+    opacity: 0.72;
+    filter: saturate(0.75);
+  }
+  100% {
+    opacity: 1;
+    filter: saturate(1);
+  }
+}
+
+@keyframes panel-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes drawing-reveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.78);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes attention-once {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-2px);
+  }
+  55% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes dot-pop {
+  0% {
+    transform: scale(0.84);
+  }
+  70% {
+    transform: scale(1.16);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }

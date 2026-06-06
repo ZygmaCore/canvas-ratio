@@ -194,7 +194,7 @@ export function TaskForm({
     <form
       onSubmit={handleSubmit}
       data-testid="task-form"
-      className="rounded-lg border-2 border-[#1A1A1A] bg-[#FFFFFF] p-5 shadow-[4px_4px_0_#1A1A1A]"
+      className="animate-panel-enter rounded-lg border-2 border-[#1A1A1A] bg-[#FFFFFF] p-5 shadow-[4px_4px_0_#1A1A1A]"
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
@@ -232,7 +232,7 @@ export function TaskForm({
             disabled={disabled || projects.length === 0}
             data-testid="task-project"
             onChange={(event) => onSelectedProjectChange(event.currentTarget.value)}
-            className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
+            className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:bg-[#FFD7BF]"
           >
             {projects.map((project) => (
               <option key={project.id} value={project.id}>
@@ -252,7 +252,7 @@ export function TaskForm({
             disabled={formDisabled}
             data-testid="task-name"
             onChange={(event) => setTaskName(event.currentTarget.value)}
-            className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
+            className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:bg-[#FFD7BF]"
             placeholder="DSA, deep work, client call"
           />
         </label>
@@ -275,7 +275,7 @@ export function TaskForm({
           data-testid="task-description"
           onChange={(event) => setDescription(event.currentTarget.value)}
           rows={3}
-          className="mt-2 w-full resize-none border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
+          className="mt-2 w-full resize-none border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:bg-[#FFD7BF]"
           placeholder="Optional"
         />
       </label>
@@ -301,7 +301,7 @@ export function TaskForm({
                 onChange={(event) =>
                   handleInputModeChange(event.currentTarget.value as TaskInputMode)
                 }
-                className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
+                className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:bg-[#FFD7BF]"
               >
                 {Object.entries(inputModeLabels).map(([value, label]) => (
                   <option key={value} value={value}>
@@ -322,7 +322,7 @@ export function TaskForm({
                 onChange={(event) =>
                   setTargetCanvas(event.currentTarget.value as TargetCanvas)
                 }
-                className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
+                className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:bg-[#FFD7BF]"
               >
                 {Object.entries(targetCanvasLabels).map(([value, label]) => (
                   <option key={value} value={value}>
@@ -350,7 +350,7 @@ export function TaskForm({
                     setDurationHours(event.currentTarget.value)
                   }
                   onInput={(event) => setDurationHours(event.currentTarget.value)}
-                  className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
+                  className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:bg-[#FFD7BF]"
                 />
               </label>
               <label className="block">
@@ -370,7 +370,7 @@ export function TaskForm({
                   onInput={(event) =>
                     setDurationMinutes(event.currentTarget.value)
                   }
-                  className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
+                  className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:bg-[#FFD7BF]"
                 />
               </label>
             </div>
@@ -391,7 +391,7 @@ export function TaskForm({
                 data-testid="task-ratio"
                 onChange={(event) => setRatio(event.currentTarget.value)}
                 onInput={(event) => setRatio(event.currentTarget.value)}
-                className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
+                className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:bg-[#FFD7BF]"
               />
             </label>
           ) : null}
@@ -410,7 +410,7 @@ export function TaskForm({
                   data-testid="task-start"
                   onChange={(event) => setStartValue(event.currentTarget.value)}
                   onInput={(event) => setStartValue(event.currentTarget.value)}
-                  className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
+                  className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:bg-[#FFD7BF]"
                 />
               </label>
               <label className="block">
@@ -425,7 +425,7 @@ export function TaskForm({
                   data-testid="task-end"
                   onChange={(event) => setEndValue(event.currentTarget.value)}
                   onInput={(event) => setEndValue(event.currentTarget.value)}
-                  className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
+                  className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:bg-[#FFD7BF]"
                 />
               </label>
             </div>
@@ -448,7 +448,7 @@ export function TaskForm({
         type="submit"
         disabled={formDisabled}
         data-testid="add-task"
-        className="mt-4 min-h-11 border-2 border-[#1A1A1A] bg-[#2F5FBF] px-4 py-2 text-sm font-black text-[#FFFFFF] shadow-[3px_3px_0_#FFD91A] disabled:cursor-not-allowed disabled:bg-[#8B4A3A]"
+        className="mt-4 min-h-11 border-2 border-[#1A1A1A] bg-[#2F5FBF] px-4 py-2 text-sm font-black text-[#FFFFFF] shadow-[3px_3px_0_#FFD91A] transition hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#FFD91A] focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:cursor-not-allowed disabled:bg-[#8B4A3A]"
       >
         {inputMode === "manual-cell" ? "Paint Selected Cells" : "Add Task"}
       </button>

@@ -66,7 +66,7 @@ export function RandomEventForm({
     <form
       onSubmit={handleSubmit}
       data-testid="random-event-form"
-      className="rounded-lg border-2 border-[#1A1A1A] bg-[#FFFFFF] p-5 shadow-[4px_4px_0_#1A1A1A]"
+      className="animate-panel-enter rounded-lg border-2 border-[#1A1A1A] bg-[#FFFFFF] p-5 shadow-[4px_4px_0_#1A1A1A]"
     >
       <h2 className="text-2xl font-black">Random Event</h2>
       <p className="mt-2 text-sm font-bold">
@@ -84,7 +84,7 @@ export function RandomEventForm({
           disabled={disabled}
           data-testid="random-event-title"
           onChange={(event) => setTitle(event.currentTarget.value)}
-          className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
+          className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:bg-[#FFD7BF]"
           placeholder="Errand, travel, appointment"
         />
       </label>
@@ -110,7 +110,7 @@ export function RandomEventForm({
           data-testid="random-event-description"
           onChange={(event) => setDescription(event.currentTarget.value)}
           rows={3}
-          className="mt-2 w-full resize-none border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
+          className="mt-2 w-full resize-none border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:bg-[#FFD7BF]"
           placeholder="Optional"
         />
       </label>
@@ -125,7 +125,7 @@ export function RandomEventForm({
         type="submit"
         disabled={disabled}
         data-testid="add-random-event"
-        className="mt-4 min-h-11 border-2 border-[#1A1A1A] bg-[#1A1A1A] px-4 py-2 text-sm font-black text-[#FFFFFF] shadow-[3px_3px_0_#FFD91A] disabled:cursor-not-allowed disabled:bg-[#8B4A3A]"
+        className="mt-4 min-h-11 border-2 border-[#1A1A1A] bg-[#1A1A1A] px-4 py-2 text-sm font-black text-[#FFFFFF] shadow-[3px_3px_0_#FFD91A] transition hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#FFD91A] focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:cursor-not-allowed disabled:bg-[#8B4A3A]"
       >
         Add Random Event
       </button>

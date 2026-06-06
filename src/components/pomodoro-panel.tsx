@@ -73,7 +73,13 @@ export function PomodoroPanel({
   }, [pomodoroState?.phase, soundEnabled]);
 
   return (
-    <section className="rounded-lg border-2 border-[#1A1A1A] bg-white p-5 shadow-[4px_4px_0_#1A1A1A]">
+    <section
+      className={`pomodoro-panel rounded-lg border-2 border-[#1A1A1A] p-5 ${
+        pomodoroState?.phase === "break"
+          ? "pomodoro-panel--break"
+          : "pomodoro-panel--focus shadow-[4px_4px_0_#1A1A1A]"
+      }`}
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className={compact ? "text-xl font-black" : "text-2xl font-black"}>
@@ -87,7 +93,7 @@ export function PomodoroPanel({
           type="button"
           onClick={() => setSoundEnabled(true)}
           disabled={soundEnabled}
-          className="min-h-10 border-2 border-[#1A1A1A] bg-[#FFD91A] px-3 py-2 text-sm font-black disabled:cursor-not-allowed disabled:bg-[#FFD7BF]"
+          className="min-h-10 border-2 border-[#1A1A1A] bg-[#FFD91A] px-3 py-2 text-sm font-black transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:cursor-not-allowed disabled:bg-[#FFD7BF]"
         >
           {soundEnabled ? "Sound Enabled" : "Enable Sound"}
         </button>
@@ -186,8 +192,8 @@ export function PomodoroPanel({
               return (
                 <div
                   key={session.index}
-                  className={`border-2 border-[#1A1A1A] p-2 text-center ${
-                    active ? "bg-[#FFD91A]" : "bg-white"
+                  className={`border-2 border-[#1A1A1A] p-2 text-center transition-colors ${
+                    active ? "animate-soft-pulse bg-[#FFD91A]" : "bg-white"
                   }`}
                 >
                   <p className="text-xs font-black">{session.index + 1}</p>

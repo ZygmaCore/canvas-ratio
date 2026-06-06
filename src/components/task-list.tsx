@@ -43,7 +43,7 @@ export function TaskList({
 
   return (
     <section
-      className={`rounded-lg border-2 border-[#1A1A1A] bg-[#FFFFFF] shadow-[4px_4px_0_#1A1A1A] ${
+      className={`animate-panel-enter rounded-lg border-2 border-[#1A1A1A] bg-[#FFFFFF] shadow-[4px_4px_0_#1A1A1A] ${
         compact ? "p-4" : "p-5"
       }`}
     >
@@ -107,7 +107,7 @@ function TaskCard({
   const projectColor = day ? getTaskProjectColor(day, task) : task.color;
 
   return (
-    <article className="border-2 border-[#1A1A1A] bg-[#FBFBF7] p-4">
+    <article className="animate-soft-fade border-2 border-[#1A1A1A] bg-[#FBFBF7] p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-3">
@@ -167,7 +167,7 @@ function TaskCard({
           )}
 
           {coveredCells > 0 ? (
-            <InlineMessage type="warning" className="mt-3">
+            <InlineMessage type="warning" className="animate-attention-once mt-3">
               Partially covered by unavailable time. {coveredCells} cell
               {coveredCells === 1 ? "" : "s"} hidden.
             </InlineMessage>

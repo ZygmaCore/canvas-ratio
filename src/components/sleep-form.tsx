@@ -52,7 +52,7 @@ export function SleepForm({ disabled = false, onAddSleep }: SleepFormProps) {
     <form
       onSubmit={handleSubmit}
       data-testid="sleep-form"
-      className="rounded-lg border-2 border-[#1A1A1A] bg-[#FFFFFF] p-5 shadow-[4px_4px_0_#1A1A1A]"
+      className="animate-panel-enter rounded-lg border-2 border-[#1A1A1A] bg-[#FFFFFF] p-5 shadow-[4px_4px_0_#1A1A1A]"
     >
       <h2 className="text-2xl font-black">Sleep</h2>
       <p className="mt-2 text-sm font-bold">
@@ -80,7 +80,7 @@ export function SleepForm({ disabled = false, onAddSleep }: SleepFormProps) {
           data-testid="sleep-description"
           onChange={(event) => setDescription(event.currentTarget.value)}
           rows={3}
-          className="mt-2 w-full resize-none border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold disabled:bg-[#FFD7BF]"
+          className="mt-2 w-full resize-none border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:bg-[#FFD7BF]"
           placeholder="Optional"
         />
       </label>
@@ -95,7 +95,7 @@ export function SleepForm({ disabled = false, onAddSleep }: SleepFormProps) {
         type="submit"
         disabled={disabled}
         data-testid="add-sleep"
-        className="mt-4 min-h-11 border-2 border-[#1A1A1A] bg-[#1A1A1A] px-4 py-2 text-sm font-black text-[#FFFFFF] shadow-[3px_3px_0_#FFD91A] disabled:cursor-not-allowed disabled:bg-[#8B4A3A]"
+        className="mt-4 min-h-11 border-2 border-[#1A1A1A] bg-[#1A1A1A] px-4 py-2 text-sm font-black text-[#FFFFFF] shadow-[3px_3px_0_#FFD91A] transition hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#FFD91A] focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:cursor-not-allowed disabled:bg-[#8B4A3A]"
       >
         Add Sleep
       </button>

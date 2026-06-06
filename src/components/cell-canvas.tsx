@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { getCellsForCanvas, type CellCanvasMode, type CellView } from "@/lib/cells";
 import { getTaskProjectName } from "@/lib/projects";
 import type { DayRecord } from "@/types/canvas";
@@ -100,6 +101,11 @@ function CellButton({
   onUnpaintCell: (cellIndex: number) => void;
 }) {
   const isBlack = cell.state === "black";
+  const stateClass = {
+    white: "cell-button--free",
+    colored: "cell-button--colored",
+    black: "cell-button--black",
+  }[cell.state];
   const label =
     cell.state === "colored"
       ? projectName ?? "Colored project time"
@@ -125,7 +131,7 @@ function CellButton({
       }}
       aria-label={ariaLabel}
       data-testid={`cell-${cell.cellIndex}`}
-      className={`${compact ? "min-h-[50px] p-1.5" : "min-h-[72px] p-2"} border-2 border-[#1A1A1A] text-left transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] ${
+      className={`cell-button ${stateClass} ${compact ? "min-h-[50px] p-1.5" : "min-h-[72px] p-2"} border-2 border-[#1A1A1A] text-left focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] ${
         selected
           ? "shadow-[4px_4px_0_#1A1A1A] ring-4 ring-[#FFD91A]"
           : cell.state === "colored"
@@ -133,13 +139,14 @@ function CellButton({
             : "shadow-none"
       } ${disabled || blocked ? "cursor-not-allowed opacity-85" : "cursor-pointer hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#1A1A1A]"}`}
       style={{
+        "--cell-stagger": String(cell.cellIndex % 12),
         backgroundColor: cell.color,
         backgroundImage: isBlack
           ? "repeating-linear-gradient(135deg, #1A1A1A 0, #1A1A1A 6px, #3A3A3A 6px, #3A3A3A 12px)"
           : cell.isMixed
             ? "repeating-linear-gradient(135deg, rgba(255,255,255,0.35) 0, rgba(255,255,255,0.35) 6px, transparent 6px, transparent 12px)"
             : undefined,
-      }}
+      } as CSSProperties}
     >
       <span
         className={`block font-black leading-tight ${compact ? "text-[11px]" : "text-xs"} ${

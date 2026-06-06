@@ -21,7 +21,7 @@ export function InlineMessage({
   return (
     <p
       role={type === "error" || type === "warning" ? "alert" : "status"}
-      className={`border-2 border-[#1A1A1A] px-4 py-3 text-sm font-black ${messageStyles[type]} ${className}`}
+      className={`animate-panel-enter border-2 border-[#1A1A1A] px-4 py-3 text-sm font-black ${messageStyles[type]} ${className}`}
     >
       {children}
     </p>

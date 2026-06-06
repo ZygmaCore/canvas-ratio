@@ -92,7 +92,9 @@ export function ProjectList({
 
                   {projectUsage?.overQuota ? (
                     <InlineMessage type="warning" className="mt-3">
-                      Over quota because the day changed.
+                      Over quota by {projectUsage.overQuotaCells}{" "}
+                      {projectUsage.overQuotaCells === 1 ? "cell" : "cells"}{" "}
+                      because the canvas changed.
                     </InlineMessage>
                   ) : null}
 

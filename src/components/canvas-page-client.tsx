@@ -23,6 +23,7 @@ import { getCellState } from "@/lib/cells";
 import { summarizeCanvas, summarizeSlots } from "@/lib/canvas-segments";
 import { formatSeconds, getPomodoroState } from "@/lib/pomodoro";
 import {
+  calculateProjectQuotaState,
   getProjectRatioTotal,
   getProjectUsageFromSlots,
   validateProjectRatios,
@@ -303,7 +304,9 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
     }
 
     if (!ratioValidation.valid) {
-      setCellError("Your project ratios are not complete yet. Finish them before painting.");
+      setCellError(
+        "Your project ratios are not complete yet. Finish them before painting.",
+      );
       return;
     }
 
@@ -312,8 +315,20 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
       return;
     }
 
-    if (selectedCellIndices.length >= remainingQuotaCells) {
-      setCellError("Project quota is already full.");
+    const recalculatedUsage = calculateProjectQuotaState(day, projects).find(
+      (usage) => usage.projectId === selectedProjectId,
+    );
+    const recalculatedRemainingCells = recalculatedUsage?.remainingCells ?? 0;
+
+    if (recalculatedRemainingCells <= 0) {
+      setCellError("This project has no remaining cells after recalculation.");
+      return;
+    }
+
+    if (selectedCellIndices.length >= recalculatedRemainingCells) {
+      setCellError(
+        "Painting more cells would exceed the recalculated project quota.",
+      );
       return;
     }
 
@@ -1139,7 +1154,9 @@ function SelectedProjectQuotaStrip({
 
       {usage?.overQuota ? (
         <InlineMessage type="warning" className="mt-3">
-          Over quota because the day changed.
+          Over quota by {usage.overQuotaCells}{" "}
+          {usage.overQuotaCells === 1 ? "cell" : "cells"} because the canvas
+          changed.
         </InlineMessage>
       ) : null}
     </section>

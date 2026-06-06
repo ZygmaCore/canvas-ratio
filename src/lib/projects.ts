@@ -1,7 +1,7 @@
 import {
+  CELLS_PER_DAY,
   getCellIndicesForMinutes,
   getCellState,
-  getPaintableCellIndices,
 } from "@/lib/cells";
 import { PROJECT_COLORS } from "@/lib/palette";
 import {
@@ -31,7 +31,13 @@ export type ProjectQuota = {
   rawCells: number;
   quotaCells: number;
   paintedCells: number;
+  rawRemainingCells: number;
   remainingCells: number;
+  overQuotaCells: number;
+  whiteCells: number;
+  blackCells: number;
+  coloredCells: number;
+  paintableCells: number;
 };
 
 export type ProjectUsage = ProjectQuota & {
@@ -112,7 +118,20 @@ export function calculateProjectCellQuotas(
   projects: ProjectRecord[],
   paintableCellCount: number,
   paintedUsage = new Map<string, number>(),
+  whiteCellCount = paintableCellCount,
+  cellCounts?: {
+    whiteCells: number;
+    blackCells: number;
+    coloredCells: number;
+    paintableCells: number;
+  },
 ): ProjectQuota[] {
+  const counts = cellCounts ?? {
+    whiteCells: whiteCellCount,
+    blackCells: Math.max(0, CELLS_PER_DAY - paintableCellCount),
+    coloredCells: Math.max(0, paintableCellCount - whiteCellCount),
+    paintableCells: paintableCellCount,
+  };
   const totalRatio = getProjectRatioTotal(projects);
   const quotaInputs = projects.map((project, index) => {
     const rawCells = (paintableCellCount * project.ratio) / 100;
@@ -148,6 +167,7 @@ export function calculateProjectCellQuotas(
 
   return quotaInputs.map(({ project, rawCells, quotaCells }) => {
     const paintedCells = paintedUsage.get(project.id) ?? 0;
+    const rawRemainingCells = quotaCells - paintedCells;
 
     return {
       projectId: project.id,
@@ -157,27 +177,57 @@ export function calculateProjectCellQuotas(
       rawCells,
       quotaCells,
       paintedCells,
-      remainingCells: Math.max(0, quotaCells - paintedCells),
+      rawRemainingCells,
+      remainingCells: Math.min(
+        Math.max(0, rawRemainingCells),
+        counts.whiteCells,
+      ),
+      overQuotaCells: Math.max(0, paintedCells - quotaCells),
+      whiteCells: counts.whiteCells,
+      blackCells: counts.blackCells,
+      coloredCells: counts.coloredCells,
+      paintableCells: counts.paintableCells,
     };
   });
 }
 
-export function getProjectUsageFromSlots(
+export function calculateProjectQuotaState(
   day: DayRecord,
-  projects: ProjectRecord[] = getGlobalProjects(),
+  settings: { projects: ProjectRecord[] } | ProjectRecord[] =
+    getGlobalProjects(),
 ): ProjectUsage[] {
+  const projects = Array.isArray(settings) ? settings : settings.projects;
   const taskById = new Map(day.tasks.map((task) => [task.id, task]));
   const paintedCellsByProject = new Map<string, number>();
+  const cellCounts = {
+    whiteCells: 0,
+    blackCells: 0,
+    coloredCells: 0,
+    paintableCells: 0,
+  };
 
-  for (let cellIndex = 0; cellIndex < 48; cellIndex += 1) {
+  for (let cellIndex = 0; cellIndex < CELLS_PER_DAY; cellIndex += 1) {
     const cell = getCellState(day.slots, cellIndex);
 
-    if (cell.state !== "colored" || !cell.taskId) {
+    if (cell.state === "black") {
+      cellCounts.blackCells += 1;
       continue;
     }
 
-    const task = taskById.get(cell.taskId);
-    const project = task ? getTaskProject(day, task, projects) : null;
+    cellCounts.paintableCells += 1;
+
+    if (cell.state === "white" && !cell.isMixed) {
+      cellCounts.whiteCells += 1;
+      continue;
+    }
+
+    cellCounts.coloredCells += 1;
+
+    if (cell.state !== "colored") {
+      continue;
+    }
+
+    const project = getProjectForColoredCell(day, cell, taskById, projects);
 
     if (!project) {
       continue;
@@ -191,18 +241,27 @@ export function getProjectUsageFromSlots(
 
   return calculateProjectCellQuotas(
     projects,
-    getPaintableCellIndices(day.slots).length,
+    cellCounts.paintableCells,
     paintedCellsByProject,
+    cellCounts.whiteCells,
+    cellCounts,
   ).map((quota) => {
     return {
       ...quota,
-      overQuota: quota.paintedCells > quota.quotaCells,
+      overQuota: quota.overQuotaCells > 0,
       percentOfQuotaUsed:
         quota.quotaCells === 0
           ? 0
           : Math.round((quota.paintedCells / quota.quotaCells) * 1000) / 10,
     };
   });
+}
+
+export function getProjectUsageFromSlots(
+  day: DayRecord,
+  projects: ProjectRecord[] = getGlobalProjects(),
+): ProjectUsage[] {
+  return calculateProjectQuotaState(day, projects);
 }
 
 export function getProjectById(
@@ -339,7 +398,7 @@ export function getEffectivePaintedCellCount(
   day: DayRecord,
   task: TaskRecord,
 ): number {
-  return Array.from({ length: 48 }, (_, cellIndex) =>
+  return Array.from({ length: CELLS_PER_DAY }, (_, cellIndex) =>
     getCellState(day.slots, cellIndex),
   ).filter(
     (cell) =>
@@ -347,6 +406,26 @@ export function getEffectivePaintedCellCount(
       cell.taskId === task.id &&
       !cell.isMixed,
   ).length;
+}
+
+function getProjectForColoredCell(
+  day: DayRecord,
+  cell: ReturnType<typeof getCellState>,
+  taskById: Map<string, TaskRecord>,
+  projects: ProjectRecord[],
+): ProjectRecord | null {
+  const task = cell.taskId ? taskById.get(cell.taskId) : null;
+  const taskProject = task ? getTaskProject(day, task, projects) : null;
+
+  if (taskProject) {
+    return taskProject;
+  }
+
+  return (
+    projects.find(
+      (project) => project.color.toLowerCase() === cell.color.toLowerCase(),
+    ) ?? null
+  );
 }
 
 function validateProjectName(name: string): string {

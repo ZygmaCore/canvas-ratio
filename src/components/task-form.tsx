@@ -110,6 +110,10 @@ export function TaskForm({
       const assignedMinutes = getAssignedMinutes();
       const assignedCellCount = getCellIndicesForMinutes(assignedMinutes).length;
 
+      if (remainingQuotaCells <= 0) {
+        throw new Error("This project has no remaining cells after recalculation.");
+      }
+
       if (assignedCellCount > remainingQuotaCells) {
         throw new Error("Painting this task would exceed project quota.");
       }

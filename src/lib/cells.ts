@@ -126,7 +126,29 @@ export function getCellState(slots: CanvasSlot[], cellIndex: number): CellView {
     };
   }
 
+  const coloredSlot = getDominantVisibleSlot(
+    cellSlots.filter((slot) => slot.state === "colored"),
+  );
+
+  if (coloredSlot) {
+    return {
+      cellIndex,
+      startMinute,
+      endMinute,
+      label: formatCellLabel(startMinute, endMinute),
+      state: "colored",
+      color: coloredSlot.color,
+      taskId: coloredSlot.taskId,
+      blockId: coloredSlot.blockId,
+      isMixed: true,
+    };
+  }
+
   const dominantSlot = getDominantVisibleSlot(cellSlots);
+
+  if (!dominantSlot) {
+    return createFallbackCellView(cellIndex, startMinute, endMinute);
+  }
 
   return {
     cellIndex,
@@ -247,7 +269,11 @@ function createFallbackCellView(
   };
 }
 
-function getDominantVisibleSlot(slots: CanvasSlot[]): CanvasSlot {
+function getDominantVisibleSlot(slots: CanvasSlot[]): CanvasSlot | null {
+  if (slots.length === 0) {
+    return null;
+  }
+
   const usageMap = new Map<string, { slot: CanvasSlot; count: number }>();
 
   for (const slot of slots) {

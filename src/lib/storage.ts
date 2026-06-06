@@ -1,5 +1,5 @@
 import { createEmptyDayRecord } from "@/lib/day";
-import { CANVAS_PALETTE, PROJECT_COLORS, WHITE_CANVAS, BLACK_CANVAS } from "@/lib/palette";
+import { PROJECT_COLORS, WHITE_CANVAS, BLACK_CANVAS } from "@/lib/palette";
 import { createMigratedProjectId, validateProjectColor } from "@/lib/projects";
 import { rebuildDaySlots } from "@/lib/rebuild";
 import {
@@ -11,8 +11,6 @@ import type {
   CanvasSlot,
   CanvasSlotState,
   DayRecord,
-  GeneratedImageRecord,
-  JournalRecord,
   ProjectRecord,
   TargetCanvas,
   TaskInputMode,
@@ -193,8 +191,6 @@ export function normalizeDayRecordForStorage(
       sleepBlocks,
       randomEventBlocks,
       tasks: migration.tasks,
-      journal: normalizeStoredJournal(record.journal, date),
-      generatedImage: normalizeStoredGeneratedImage(record.generatedImage, date),
       locked: record.locked === true,
       createdAt,
       updatedAt,
@@ -226,70 +222,6 @@ function getStorage(): Storage | null {
   } catch {
     return null;
   }
-}
-
-function normalizeStoredJournal(
-  journal: unknown,
-  fallbackDate: string,
-): JournalRecord | undefined {
-  if (!isPlainObject(journal)) {
-    return undefined;
-  }
-
-  const content = normalizeOptionalString(journal.content);
-  const createdAt = normalizeOptionalString(journal.createdAt);
-
-  if (!content || !createdAt) {
-    return undefined;
-  }
-
-  return {
-    id: normalizeOptionalString(journal.id) ?? `journal-${fallbackDate}`,
-    date: normalizeDateKey(journal.date) ?? fallbackDate,
-    content,
-    summary: normalizeOptionalString(journal.summary),
-    source: journal.source === "ai" ? "ai" : "mock",
-    model: normalizeOptionalString(journal.model),
-    warning: normalizeOptionalString(journal.warning),
-    createdAt,
-    inputSnapshot: isPlainObject(journal.inputSnapshot)
-      ? (journal.inputSnapshot as unknown as JournalRecord["inputSnapshot"])
-      : undefined,
-  };
-}
-
-function normalizeStoredGeneratedImage(
-  generatedImage: unknown,
-  fallbackDate: string,
-): GeneratedImageRecord | undefined {
-  if (!isPlainObject(generatedImage)) {
-    return undefined;
-  }
-
-  const dataUrl = normalizeOptionalString(generatedImage.dataUrl);
-  const imageUrl = normalizeOptionalString(generatedImage.imageUrl);
-  const prompt = normalizeOptionalString(generatedImage.prompt) ?? "";
-  const createdAt = normalizeOptionalString(generatedImage.createdAt);
-
-  if ((!dataUrl && !imageUrl && !prompt) || !createdAt) {
-    return undefined;
-  }
-
-  return {
-    id: normalizeOptionalString(generatedImage.id) ?? `image-${fallbackDate}`,
-    date: normalizeDateKey(generatedImage.date) ?? fallbackDate,
-    imageUrl,
-    dataUrl,
-    prompt,
-    model: normalizeOptionalString(generatedImage.model),
-    source: generatedImage.source === "ai" ? "ai" : "mock",
-    warning: normalizeOptionalString(generatedImage.warning),
-    palette: normalizeStoredPalette(generatedImage.palette),
-    createdAt,
-    inputSnapshot: isPlainObject(generatedImage.inputSnapshot)
-      ? (generatedImage.inputSnapshot as unknown as GeneratedImageRecord["inputSnapshot"])
-      : undefined,
-  };
 }
 
 function migrateProjectsAndTasks({
@@ -622,22 +554,6 @@ function validateStoredProjectColor(
   } catch {
     return fallbackColor;
   }
-}
-
-function normalizeStoredPalette(palette: unknown): string[] {
-  if (!Array.isArray(palette)) {
-    return CANVAS_PALETTE.map((color) => color.hex);
-  }
-
-  const allowedColors = new Set<string>(CANVAS_PALETTE.map((color) => color.hex));
-  const normalizedPalette = palette
-    .filter((color): color is string => typeof color === "string")
-    .map((color) => color.toUpperCase())
-    .filter((color) => allowedColors.has(color));
-
-  return normalizedPalette.length > 0
-    ? normalizedPalette
-    : CANVAS_PALETTE.map((color) => color.hex);
 }
 
 function normalizeProjectRatio(ratio: unknown): number {

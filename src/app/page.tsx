@@ -34,8 +34,8 @@ const tutorialCards = [
     swatchColor: PROJECT_COLORS[1].hex,
   },
   {
-    title: "Finish the Day",
-    description: "Write a journal and generate a pixel story.",
+    title: "Daily Review",
+    description: "Copy a local review prompt for your day.",
     swatchColor: PROJECT_COLORS[7].hex,
   },
 ];

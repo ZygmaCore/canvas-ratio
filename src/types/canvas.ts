@@ -62,101 +62,10 @@ export type DayRecord = {
   sleepBlocks: TimeBlock[];
   randomEventBlocks: TimeBlock[];
   tasks: TaskRecord[];
-  journal?: JournalRecord;
-  generatedImage?: GeneratedImageRecord;
   locked?: boolean;
   createdAt: string;
   updatedAt: string;
 };
-
-export interface JournalInputSnapshot {
-  date: string;
-  totalCells: number;
-  blackCells: number;
-  whiteCells: number;
-  coloredCells: number;
-  projects: Array<{
-    projectId: string;
-    name: string;
-    color: string;
-    ratio: number;
-    quotaCells: number;
-    paintedCells: number;
-    remainingCells: number;
-  }>;
-  tasks: Array<{
-    taskId: string;
-    projectId?: string;
-    projectName?: string;
-    taskName: string;
-    color?: string;
-    assignedCells: number;
-    effectivePaintedCells: number;
-    description?: string;
-  }>;
-  sleepBlocks: Array<{
-    title: string;
-    startMinute: number;
-    endMinute: number;
-    description?: string;
-  }>;
-  randomEventBlocks: Array<{
-    title: string;
-    startMinute: number;
-    endMinute: number;
-    description?: string;
-  }>;
-}
-
-export interface JournalRecord {
-  id: string;
-  date: string;
-  content: string;
-  summary?: string;
-  model?: string;
-  source: "ai" | "mock";
-  warning?: string;
-  createdAt: string;
-  inputSnapshot?: JournalInputSnapshot;
-}
-
-export interface ImageInputSnapshot {
-  date: string;
-  journalContent: string;
-  colorComposition: Array<{
-    color: string;
-    label: string;
-    minutes: number;
-    cells: number;
-    percentOfDay: number;
-    percentOfPainted?: number;
-  }>;
-  projects: Array<{
-    projectId: string;
-    name: string;
-    color: string;
-    ratio: number;
-    paintedCells: number;
-    quotaCells: number;
-  }>;
-  blackCells: number;
-  whiteCells: number;
-  coloredCells: number;
-}
-
-export interface GeneratedImageRecord {
-  id: string;
-  date: string;
-  imageUrl?: string;
-  dataUrl?: string;
-  prompt: string;
-  model?: string;
-  source: "ai" | "mock";
-  warning?: string;
-  palette: string[];
-  createdAt: string;
-  inputSnapshot?: ImageInputSnapshot;
-}
 
 export type PomodoroState = {
   cycleIndex: number;

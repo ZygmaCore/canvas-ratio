@@ -6,18 +6,15 @@ import { BackupPanel } from "@/components/backup-panel";
 import { BlackBlockList } from "@/components/black-block-list";
 import { CanvasSummaryGrid } from "@/components/canvas-summary-grid";
 import { CellCanvas } from "@/components/cell-canvas";
+import { DailyReviewButton } from "@/components/daily-review-button";
 import { DayDebugPanel } from "@/components/day-debug-panel";
 import { DayStatusBadge } from "@/components/day-status-badge";
-import { FinishColoringPanel } from "@/components/finish-coloring-panel";
-import { GenerateImagePanel } from "@/components/generate-image-panel";
 import { InlineMessage } from "@/components/inline-message";
-import { JournalView } from "@/components/journal-view";
 import { PomodoroPanel } from "@/components/pomodoro-panel";
 import { ProjectRatioForm } from "@/components/project-form";
 import { ProjectList } from "@/components/project-list";
 import { RandomEventForm } from "@/components/random-event-form";
 import { SleepForm } from "@/components/sleep-form";
-import { StoryModeView } from "@/components/story-mode-view";
 import { TaskForm } from "@/components/task-form";
 import { TaskList } from "@/components/task-list";
 import { useDayRecord } from "@/hooks/use-day-record";
@@ -39,13 +36,7 @@ import {
 import { createTaskRecord, type TaskRecordInput } from "@/lib/tasks";
 import { getTodayDateKey } from "@/lib/time";
 import { unpaintCell } from "@/lib/unpaint";
-import type {
-  DayRecord,
-  GeneratedImageRecord,
-  JournalRecord,
-  ProjectRecord,
-  TaskInputMode,
-} from "@/types/canvas";
+import type { DayRecord, ProjectRecord, TaskInputMode } from "@/types/canvas";
 
 type CanvasPageClientProps = {
   initialDateKey: string;
@@ -75,7 +66,6 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
   const [taskInputMode, setTaskInputMode] =
     useState<TaskInputMode>("manual-cell");
   const [cellError, setCellError] = useState("");
-  const [viewMode, setViewMode] = useState<"canvas" | "story">("canvas");
   const [activeDrawerTab, setActiveDrawerTab] =
     useState<DrawerTab>("projects");
   const [activeMobileTab, setActiveMobileTab] =
@@ -132,7 +122,6 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
   useEffect(() => {
     setSelectedCellIndices([]);
     setCellError("");
-    setViewMode("canvas");
     setActiveMobileTab("canvas");
   }, [selectedDateKey]);
 
@@ -283,32 +272,6 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
     setSelectedCellIndices([]);
   }
 
-  function handleJournalCreated(journal: JournalRecord) {
-    if (!day || !editable) {
-      return;
-    }
-
-    saveDay({
-      ...day,
-      journal,
-      updatedAt: new Date().toISOString(),
-    });
-  }
-
-  function handleImageCreated(image: GeneratedImageRecord) {
-    if (!day || !editable) {
-      return;
-    }
-
-    saveDay({
-      ...day,
-      generatedImage: image,
-      updatedAt: new Date().toISOString(),
-    });
-    setViewMode("story");
-  }
-
-
   function handleToggleCell(cellIndex: number) {
     setCellError("");
 
@@ -396,15 +359,6 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
             Choose today or a past date to view stored canvas records.
           </p>
         </section>
-      );
-    }
-
-    if (viewMode === "story" && day) {
-      return (
-        <StoryModeView
-          day={day}
-          onBackToCanvas={() => setViewMode("canvas")}
-        />
       );
     }
 
@@ -602,7 +556,12 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
           <PanelHeading
             eyebrow="Today"
             title="Today’s Review"
-            description="Pomodoro, summary, journal, story, and settings."
+            description="Pomodoro, summary, and a local daily review prompt."
+          />
+          <DailyReviewButton
+            day={day}
+            settings={settings}
+            disabled={!day || status === "future"}
           />
           <PomodoroPanel day={day} readOnly={!editable} compact />
           <CanvasSummaryGrid
@@ -611,37 +570,6 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
             fullDaySummary={slotSummaries.fullDaySummary}
             compact
           />
-          {day && (
-            <section className="grid gap-4">
-              {status === "today" ? (
-                <>
-                  <FinishColoringPanel
-                    day={day}
-                    editable={editable}
-                    onJournalCreated={handleJournalCreated}
-                  />
-                  <GenerateImagePanel
-                    day={day}
-                    editable={editable}
-                    onImageCreated={handleImageCreated}
-                  />
-                </>
-              ) : null}
-              <JournalView journal={day.journal} />
-            </section>
-          )}
-          {day?.generatedImage ? (
-            <button
-              type="button"
-              onClick={() => {
-                setViewMode("story");
-                setActiveMobileTab("canvas");
-              }}
-              className="min-h-12 border-2 border-[#1A1A1A] bg-[#FFD91A] px-5 py-3 text-sm font-black shadow-[4px_4px_0_#1A1A1A] transition hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#1A1A1A] focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]"
-            >
-              View Story Mode
-            </button>
-          ) : null}
           {!isDesktop ? (
             <MobileUnavailableDetails
               editable={editable}
@@ -804,9 +732,6 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
             active={activeMobileTab === tab.id}
             onClick={() => {
               setActiveMobileTab(tab.id);
-              if (tab.id === "canvas") {
-                setViewMode("canvas");
-              }
             }}
           />
         ))}

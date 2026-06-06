@@ -34,7 +34,7 @@ When a random event is added, its time range becomes black and colored task cell
 - Deleting black blocks restores covered colors when assignments still exist.
 - Automatic clock-based Pomodoro 25/5 rhythm.
 - Local JSON export/import backup tools.
-- Optional AI journal and 100x100 pixel story with mock fallback.
+- Daily Review prompt builder that copies a local, structured day summary.
 
 ## Tech Stack
 
@@ -69,17 +69,15 @@ The Backup Tools panel can:
 
 Imports and exports are client-side only. No server upload, database, account, or cloud sync is used.
 
+## Daily Review Prompt
+
+The Today’s Review tab includes a button that copies a Daily Review prompt to your clipboard. The prompt is built in the browser from the current day’s 48 half-hour blocks, project ratios, tasks, and unavailable time.
+
+No API call is made by Canvas Ratio when copying the prompt. You choose where to paste it, and the app keeps the review data local unless you send it somewhere yourself.
+
 ## Environment Variables
 
-AI is optional. Without `GEMINI_API_KEY`, the app uses mock fallback output.
-
-```text
-GEMINI_API_KEY=your_key_here
-GEMINI_TEXT_MODEL=gemini-3.1-flash-lite
-GEMINI_IMAGE_MODEL=gemini-2.5-flash-image
-```
-
-`GEMINI_API_KEY` is read server-side by the API routes and should not be exposed with a `NEXT_PUBLIC_` prefix.
+No environment variables are required for the local MVP.
 
 ## Run Locally
 
@@ -131,8 +129,6 @@ The Docker setup runs the standalone Next.js production server with `node server
 - There is no login, account sync, database, or cloud sync.
 - Clearing browser data can delete records.
 - Export/import backup is recommended before clearing browser data or changing browsers.
-- AI is optional and depends on Gemini environment variables.
-- Image generation falls back to a deterministic mock if AI is unavailable.
 - There are no analytics, social sharing, billing, teams, calendar integration, dashboard charts, or push notifications.
 
 ## Release Notes
@@ -143,6 +139,6 @@ The Docker setup runs the standalone Next.js production server with `node server
 - Project-ratio quota painting.
 - Sleep and random-event black canvas.
 - Automatic Pomodoro.
-- Optional AI journal and pixel story.
+- Local Daily Review prompt copy.
 - JSON backup/import.
 - Production Docker build.

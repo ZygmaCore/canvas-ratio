@@ -83,8 +83,6 @@ export function DayDebugPanel({
     ["Black block minutes", String(blackBlockDuration)],
     ["Covered task minutes", String(coveredTaskMinutes)],
     ["Pomodoro", "Automatic 25/5 clock"],
-    ["Journal", day?.journal?.source ?? "none"],
-    ["Pixel story", day?.generatedImage?.source ?? "none"],
     ["Storage key", getDayStorageKey(dateKey)],
   ];
 

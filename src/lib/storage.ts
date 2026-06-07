@@ -373,7 +373,7 @@ function getGlobalProjectForStoredTask({
 
   if (!normalizedProjectId && (projectId || projectName || existingProject)) {
     console.warn(
-      "Canvas Ratio mapped an unknown legacy project to Academic.",
+      "Canvas Ratio mapped an unknown legacy project to School.",
       {
         projectId,
         projectName,

@@ -13,13 +13,13 @@ type RatioInput = Partial<Record<GlobalProjectId, number>>;
 const DEFAULT_PROJECTS: Array<ProjectRecord & { id: GlobalProjectId }> = [
   {
     id: "academic",
-    name: "Academic",
+    name: "School",
     color: "#FFD91A",
     ratio: 50,
   },
   {
     id: "professional",
-    name: "Professional",
+    name: "Work",
     color: "#2F5FBF",
     ratio: 30,
   },

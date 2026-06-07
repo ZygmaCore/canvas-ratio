@@ -9,13 +9,13 @@ Canvas Ratio treats each day like a drawing book. White space is free time, blac
 - White = free time.
 - Black = unavailable time.
 - Colors = the fixed global projects and their tasks.
-- Projects are global settings: Academic, Professional, and Personal.
+- Projects are global settings: School, Work, and Personal.
 - Ratios apply only to the non-black canvas.
 - Each day has 48 visible cells.
 - Each cell is 30 minutes.
 - Internally, the app stores 1440 minute slots for accurate rebuilds.
 
-The default project ratios are Academic 50, Professional 30, and Personal 20. Users adjust those global ratios, and the total must be exactly 100 before painting. Black cells are excluded first, then project quotas are calculated from the remaining paintable cells using largest-remainder rounding.
+The default project ratios are School 50, Work 30, and Personal 20. Users adjust those global ratios, and the total must be exactly 100 before painting. Black cells are excluded first, then project quotas are calculated from the remaining paintable cells using largest-remainder rounding.
 
 When a random event is added, its time range becomes black and colored task cells after the event end are cleared back to free time. Existing black blocks are preserved, and colored cells before the interruption still count against the recalculated project quota.
 
@@ -58,7 +58,7 @@ Global project settings are stored separately:
 canvas-ratio:settings
 ```
 
-Day records no longer require per-day projects. Older records with embedded projects can still load, and old task project names such as Academic, Professional, Work, and Personal are normalized to the fixed global project IDs when possible.
+Day records no longer require per-day projects. Older records with embedded projects can still load, and old task project names such as Academic, School, Professional, Work, and Personal are normalized to the fixed global project IDs when possible.
 
 The Backup Tools panel can:
 

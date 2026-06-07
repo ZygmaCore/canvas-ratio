@@ -59,7 +59,7 @@ export function ProjectRatioForm({
         <div>
           <h2 className="text-2xl font-black">Set your daily ratios</h2>
           <p className="mt-1 text-sm font-bold">
-            Academic, Professional, and Personal stay fixed.
+            School, Work, and Personal stay fixed.
           </p>
         </div>
         <span

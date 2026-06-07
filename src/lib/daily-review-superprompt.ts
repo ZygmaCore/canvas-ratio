@@ -117,7 +117,7 @@ export function buildDailyReviewPrompt(data: DailyReviewData): string {
 Canvas Ratio meaning:
 - White/free blocks are unused flexible time.
 - Black/unavailable blocks are sleep, random events, or time that could not be used.
-- Colored blocks are intentional work assigned to Academic, Professional, or Personal.
+- Colored blocks are intentional work assigned to School, Work, or Personal.
 - Each block is 30 minutes.
 - There are 48 blocks in a day.
 

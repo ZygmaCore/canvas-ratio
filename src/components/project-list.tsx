@@ -47,6 +47,10 @@ export function ProjectList({
           );
           const taskCount = day ? getProjectTaskCount(day, project.id) : 0;
           const selected = project.id === selectedProjectId;
+          const recommendedCells =
+            projectUsage?.recommendedCells ?? projectUsage?.quotaCells ?? 0;
+          const coloredCells = projectUsage?.paintedCells ?? 0;
+          const differenceCells = coloredCells - recommendedCells;
 
           return (
             <article
@@ -79,30 +83,30 @@ export function ProjectList({
 
                   <div className="mt-3 grid gap-2 text-sm font-bold sm:grid-cols-3">
                     <p>
-                      Quota:{" "}
+                      Recommended:{" "}
                       <span className="font-black">
-                        {projectUsage?.quotaCells ?? 0} cells
+                        {recommendedCells} cells
                       </span>
                     </p>
                     <p>
                       Colored:{" "}
                       <span className="font-black">
-                        {projectUsage?.paintedCells ?? 0} cells
+                        {coloredCells} cells
                       </span>
                     </p>
                     <p>
-                      Remaining:{" "}
+                      Difference:{" "}
                       <span className="font-black">
-                        {projectUsage?.remainingCells ?? 0} cells
+                        {getRecommendationDifferenceLabel(differenceCells)}
                       </span>
                     </p>
                   </div>
 
-                  {projectUsage?.overQuota ? (
+                  {differenceCells > 0 ? (
                     <InlineMessage type="warning" className="animate-attention-once mt-3">
-                      Over quota by {projectUsage.overQuotaCells}{" "}
-                      {projectUsage.overQuotaCells === 1 ? "cell" : "cells"}{" "}
-                      because the canvas changed.
+                      Over recommendation by {differenceCells}{" "}
+                      {differenceCells === 1 ? "cell" : "cells"}. You can
+                      still paint freely.
                     </InlineMessage>
                   ) : null}
 
@@ -125,4 +129,16 @@ export function ProjectList({
       </div>
     </section>
   );
+}
+
+function getRecommendationDifferenceLabel(differenceCells: number): string {
+  if (differenceCells > 0) {
+    return `Over by ${differenceCells}`;
+  }
+
+  if (differenceCells < 0) {
+    return `Under by ${Math.abs(differenceCells)}`;
+  }
+
+  return "On recommendation";
 }

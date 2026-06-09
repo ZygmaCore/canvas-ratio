@@ -30,10 +30,14 @@ export type ProjectQuota = {
   ratio: number;
   rawCells: number;
   quotaCells: number;
+  recommendedCells: number;
   paintedCells: number;
   rawRemainingCells: number;
   remainingCells: number;
   overQuotaCells: number;
+  differenceCells: number;
+  overRecommendationCells: number;
+  underRecommendationCells: number;
   whiteCells: number;
   blackCells: number;
   coloredCells: number;
@@ -104,7 +108,7 @@ export function validateProjectRatios(
     return {
       valid: false,
       total,
-      message: "Project ratios must total 100 before painting.",
+      message: "Project ratios should total 100 for balanced recommendations.",
     };
   }
 
@@ -168,6 +172,7 @@ export function calculateProjectCellQuotas(
   return quotaInputs.map(({ project, rawCells, quotaCells }) => {
     const paintedCells = paintedUsage.get(project.id) ?? 0;
     const rawRemainingCells = quotaCells - paintedCells;
+    const differenceCells = paintedCells - quotaCells;
 
     return {
       projectId: project.id,
@@ -176,6 +181,7 @@ export function calculateProjectCellQuotas(
       ratio: project.ratio,
       rawCells,
       quotaCells,
+      recommendedCells: quotaCells,
       paintedCells,
       rawRemainingCells,
       remainingCells: Math.min(
@@ -183,6 +189,9 @@ export function calculateProjectCellQuotas(
         counts.whiteCells,
       ),
       overQuotaCells: Math.max(0, paintedCells - quotaCells),
+      differenceCells,
+      overRecommendationCells: Math.max(0, differenceCells),
+      underRecommendationCells: Math.max(0, -differenceCells),
       whiteCells: counts.whiteCells,
       blackCells: counts.blackCells,
       coloredCells: counts.coloredCells,

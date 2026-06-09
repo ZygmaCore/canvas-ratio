@@ -123,8 +123,9 @@ export function ProjectRatioForm({
 
       {totalRatio !== 100 || !ratiosAreWholeNumbers ? (
         <InlineMessage type="warning" className="mt-3">
-          Ratios must be whole numbers and total 100 before painting. Draft
-          total: {Number.isFinite(totalRatio) ? totalRatio : 0}/100.
+          Ratios should be whole numbers and total 100 for balanced
+          recommendations. Draft total:{" "}
+          {Number.isFinite(totalRatio) ? totalRatio : 0}/100.
         </InlineMessage>
       ) : null}
 

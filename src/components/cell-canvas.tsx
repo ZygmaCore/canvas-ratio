@@ -11,7 +11,6 @@ type CellCanvasProps = {
   selectedProjectId?: string;
   selectedCellIndices: number[];
   editable: boolean;
-  quotaReady: boolean;
   compact?: boolean;
   onToggleCell: (cellIndex: number) => void;
   onUnpaintCell: (cellIndex: number) => void;
@@ -28,7 +27,6 @@ export function CellCanvas({
   selectedProjectId,
   selectedCellIndices,
   editable,
-  quotaReady,
   compact = false,
   onToggleCell,
   onUnpaintCell,

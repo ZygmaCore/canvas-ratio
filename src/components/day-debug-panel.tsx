@@ -57,7 +57,7 @@ export function DayDebugPanel({
     0,
     assignedTaskMinutes - effectiveTaskMinutes,
   );
-  const quotaCellTotal = projectUsage.reduce(
+  const recommendedCellTotal = projectUsage.reduce(
     (totalCells, usage) => totalCells + usage.quotaCells,
     0,
   );
@@ -77,7 +77,7 @@ export function DayDebugPanel({
     ["Projects", String(projects.length)],
     ["Ratio total", `${ratioValidation.total}/100`],
     ["Ratio ready", String(ratioValidation.valid)],
-    ["Quota cells", String(quotaCellTotal)],
+    ["Recommended cells", String(recommendedCellTotal)],
     ["Tasks", String(day?.tasks.length ?? 0)],
     ["Black blocks", String(blackBlockCount)],
     ["Black block minutes", String(blackBlockDuration)],
@@ -93,7 +93,7 @@ export function DayDebugPanel({
           Developer Details
         </summary>
         <p className="mt-3 text-sm font-bold text-[#4a4a4a]">
-          Compact diagnostics for storage, quotas, and renderer state.
+          Compact diagnostics for storage, recommendations, and renderer state.
         </p>
         <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {items.map(([label, value]) => (

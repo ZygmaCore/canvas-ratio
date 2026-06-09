@@ -118,20 +118,23 @@ Canvas Ratio meaning:
 - White/free blocks are unused flexible time.
 - Black/unavailable blocks are sleep, random events, or time that could not be used.
 - Colored blocks are intentional work assigned to School, Work, or Personal.
+- Project ratios are recommended balance targets, not strict limits.
+- The user may intentionally paint over or under the recommendation.
 - Each block is 30 minutes.
 - There are 48 blocks in a day.
 
 Your task:
 1. Analyze the day objectively.
 2. Summarize how the day was spent.
-3. Compare actual colored blocks against project ratios.
+3. Compare actual colored blocks against recommended project balance.
 4. Identify what went well.
 5. Identify what got interrupted.
 6. Identify unused/free time patterns.
 7. Give a short improvement suggestion for tomorrow.
-8. Do not shame me.
-9. Do not invent tasks or events.
-10. Base your review only on the JSON.
+8. Reflect over/under recommendation objectively.
+9. Do not shame me.
+10. Do not invent tasks or events.
+11. Base your review only on the JSON.
 
 Output format:
 - Daily Summary

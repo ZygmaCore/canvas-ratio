@@ -23,7 +23,6 @@ import { getCellState } from "@/lib/cells";
 import { summarizeCanvas, summarizeSlots } from "@/lib/canvas-segments";
 import { formatSeconds, getPomodoroState } from "@/lib/pomodoro";
 import {
-  calculateProjectQuotaState,
   getProjectRatioTotal,
   getProjectUsageFromSlots,
   validateProjectRatios,
@@ -100,7 +99,6 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
   );
   const selectedProject =
     projects.find((project) => project.id === selectedProjectId) ?? null;
-  const remainingQuotaCells = selectedProjectUsage?.remainingCells ?? 0;
   const manualPaintingActive = taskInputMode === "manual-cell";
   const pomodoroState = now ? getPomodoroState(now) : null;
   const totalRatio = getProjectRatioTotal(projects);
@@ -293,32 +291,8 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
       return;
     }
 
-    if (!ratioValidation.valid) {
-      setCellError(
-        "Your project ratios are not complete yet. Finish them before painting.",
-      );
-      return;
-    }
-
     if (!selectedProjectId) {
       setCellError("Choose a project before coloring cells.");
-      return;
-    }
-
-    const recalculatedUsage = calculateProjectQuotaState(day, projects).find(
-      (usage) => usage.projectId === selectedProjectId,
-    );
-    const recalculatedRemainingCells = recalculatedUsage?.remainingCells ?? 0;
-
-    if (recalculatedRemainingCells <= 0) {
-      setCellError("This project has no remaining cells after recalculation.");
-      return;
-    }
-
-    if (selectedCellIndices.length >= recalculatedRemainingCells) {
-      setCellError(
-        "Painting more cells would exceed the recalculated project quota.",
-      );
       return;
     }
 
@@ -389,7 +363,6 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
             selectedProjectId={selectedProjectId}
             selectedCellIndices={selectedCellIndices}
             editable={editable}
-            quotaReady={ratioValidation.valid}
             compact
             onToggleCell={handleToggleCell}
             onUnpaintCell={handleUnpaintCell}
@@ -400,7 +373,6 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
             selectedProjectId={selectedProjectId}
             selectedCellIndices={selectedCellIndices}
             editable={editable}
-            quotaReady={ratioValidation.valid}
             compact
             onToggleCell={handleToggleCell}
             onUnpaintCell={handleUnpaintCell}
@@ -417,7 +389,6 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
           project={selectedProject}
           usage={selectedProjectUsage}
           selectedCellCount={selectedCellIndices.length}
-          quotaReady={ratioValidation.valid}
         />
       </div>
     );
@@ -430,7 +401,7 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
           <PanelHeading
             eyebrow="Step 1"
             title="Daily Ratios"
-            description="Set your daily ratios for the three fixed projects."
+            description="Ratios are recommendations, not limits."
           />
           <ProjectList
             day={day}
@@ -441,7 +412,8 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
           <RatioProgress totalRatio={totalRatio} />
           {hasProjects && !ratioValidation.valid ? (
             <InlineMessage type="warning">
-              Your project ratios must total 100 before painting.
+              Ratios need to total 100 for recommendations to add up cleanly.
+              You can still paint freely.
             </InlineMessage>
           ) : null}
           {editable ? (
@@ -484,14 +456,12 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
               onOpenProjects={openProjectsPanel}
             />
           ) : null}
-          {editable && hasProjects && ratioValidation.valid ? (
+          {editable && hasProjects ? (
             <TaskForm
               projects={projects}
               slots={day?.slots ?? []}
               selectedCellIndices={selectedCellIndices}
               selectedProjectId={selectedProjectId}
-              quotaReady={ratioValidation.valid}
-              remainingQuotaCells={remainingQuotaCells}
               onSelectedProjectChange={(projectId) => {
                 setSelectedProjectId(projectId);
                 setSelectedCellIndices([]);
@@ -609,6 +579,12 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
                 className="border-2 border-[#1A1A1A] bg-white px-3 py-2 text-sm font-black text-[#2F5FBF] shadow-[3px_3px_0_#FFD91A] underline-offset-4 hover:underline focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]"
               >
                 Canvas Ratio
+              </Link>
+              <Link
+                href="/project-files"
+                className="border-2 border-[#1A1A1A] bg-[#FFD91A] px-3 py-2 text-sm font-black shadow-[3px_3px_0_#1A1A1A] underline-offset-4 hover:underline focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]"
+              >
+                Project Files
               </Link>
               <h1 className="text-2xl font-black leading-tight sm:text-3xl">
                 Today’s Canvas
@@ -781,7 +757,8 @@ function RatioIncompleteCallout({
         Your project ratios are not complete yet.
       </h3>
       <p className="mt-2 text-sm font-bold">
-        Finish them before painting. Current total: {totalRatio}/100.
+        Current total: {totalRatio}/100. You can still paint freely while you
+        adjust them.
       </p>
       <button
         type="button"
@@ -1020,21 +997,20 @@ function SelectedProjectQuotaStrip({
   project,
   usage,
   selectedCellCount,
-  quotaReady,
 }: {
   project: ProjectRecord | null;
   usage?: ProjectUsage;
   selectedCellCount: number;
-  quotaReady: boolean;
 }) {
-  const quotaCells = usage?.quotaCells ?? 0;
+  const recommendedCells = usage?.recommendedCells ?? usage?.quotaCells ?? 0;
   const paintedCells = usage?.paintedCells ?? 0;
-  const remainingCells = usage?.remainingCells ?? 0;
-  const selectedWithinQuota = Math.min(selectedCellCount, remainingCells);
+  const projectedColoredCells = paintedCells + selectedCellCount;
+  const differenceCells = projectedColoredCells - recommendedCells;
   const progress =
-    quotaCells > 0
-      ? Math.min(((paintedCells + selectedWithinQuota) / quotaCells) * 100, 100)
+    recommendedCells > 0
+      ? Math.min((projectedColoredCells / recommendedCells) * 100, 100)
       : 0;
+  const differenceLabel = getRecommendationDifferenceLabel(differenceCells);
 
   return (
     <section
@@ -1061,11 +1037,9 @@ function SelectedProjectQuotaStrip({
           </div>
         </div>
         <span
-          className={`w-fit border-2 border-[#1A1A1A] px-3 py-1 text-sm font-black ${
-            quotaReady ? "bg-[#8BCF3F]" : "bg-[#FFD7BF]"
-          }`}
+          className="w-fit border-2 border-[#1A1A1A] bg-[#8BCF3F] px-3 py-1 text-sm font-black"
         >
-          {quotaReady ? "Ready to color" : "Finish ratios first"}
+          Recommendation only
         </span>
       </div>
 
@@ -1079,28 +1053,43 @@ function SelectedProjectQuotaStrip({
 
       <div className="mt-3 grid gap-2 text-sm font-bold sm:grid-cols-3">
         <p>
-          Used / total:{" "}
+          Recommended:{" "}
           <span className="font-black">
-            {paintedCells}/{quotaCells}
+            {recommendedCells} cells
           </span>
         </p>
-        <p key={`remaining-${remainingCells}`} className="animate-soft-fade">
-          Remaining: <span className="font-black">{remainingCells}</span>
-        </p>
         <p>
+          Colored: <span className="font-black">{paintedCells} cells</span>
+        </p>
+        <p key={`difference-${differenceCells}`} className="animate-soft-fade">
+          Difference: <span className="font-black">{differenceLabel}</span>
+        </p>
+        <p className="sm:col-span-3">
           Selected now: <span className="font-black">{selectedCellCount}</span>
         </p>
       </div>
 
-      {usage?.overQuota ? (
+      {differenceCells > 0 ? (
         <InlineMessage type="warning" className="animate-attention-once mt-3">
-          Over quota by {usage.overQuotaCells}{" "}
-          {usage.overQuotaCells === 1 ? "cell" : "cells"} because the canvas
-          changed.
+          Over recommendation by {differenceCells}{" "}
+          {differenceCells === 1 ? "cell" : "cells"}. You can still paint
+          freely.
         </InlineMessage>
       ) : null}
     </section>
   );
+}
+
+function getRecommendationDifferenceLabel(differenceCells: number): string {
+  if (differenceCells > 0) {
+    return `Over by ${differenceCells}`;
+  }
+
+  if (differenceCells < 0) {
+    return `Under by ${Math.abs(differenceCells)}`;
+  }
+
+  return "On recommendation";
 }
 
 function formatDurationLabel(minutes: number): string {

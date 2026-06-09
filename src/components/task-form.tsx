@@ -23,8 +23,6 @@ type TaskFormProps = {
   slots: CanvasSlot[];
   selectedCellIndices: number[];
   selectedProjectId: string;
-  quotaReady: boolean;
-  remainingQuotaCells: number;
   disabled?: boolean;
   onSelectedProjectChange: (projectId: string) => void;
   onInputModeChange: (mode: TaskInputMode) => void;
@@ -50,8 +48,6 @@ export function TaskForm({
   slots,
   selectedCellIndices,
   selectedProjectId,
-  quotaReady,
-  remainingQuotaCells,
   disabled = false,
   onSelectedProjectChange,
   onInputModeChange,
@@ -73,7 +69,7 @@ export function TaskForm({
     () => projects.find((project) => project.id === selectedProjectId) ?? null,
     [projects, selectedProjectId],
   );
-  const formDisabled = disabled || projects.length === 0 || !quotaReady;
+  const formDisabled = disabled || projects.length === 0;
 
   useEffect(() => {
     if (!selectedProjectId && projects[0]) {
@@ -103,20 +99,8 @@ export function TaskForm({
         throw new Error("Project settings are not available.");
       }
 
-      if (!quotaReady) {
-        throw new Error("Project ratios must total 100 before painting.");
-      }
-
       const assignedMinutes = getAssignedMinutes();
       const assignedCellCount = getCellIndicesForMinutes(assignedMinutes).length;
-
-      if (remainingQuotaCells <= 0) {
-        throw new Error("This project has no remaining cells after recalculation.");
-      }
-
-      if (assignedCellCount > remainingQuotaCells) {
-        throw new Error("Painting this task would exceed project quota.");
-      }
 
       onAddTask({
         projectId: selectedProject.id,
@@ -216,12 +200,6 @@ export function TaskForm({
         </InlineMessage>
       ) : null}
 
-      {!quotaReady && projects.length > 0 ? (
-        <InlineMessage type="warning" className="mt-4">
-          Your project ratios must total 100 before painting.
-        </InlineMessage>
-      ) : null}
-
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <label className="block">
           <span className="text-sm font-black uppercase text-[#2F5FBF]">
@@ -260,8 +238,8 @@ export function TaskForm({
 
       {inputMode === "manual-cell" ? (
         <p className="mt-4 border-2 border-[#1A1A1A] bg-[#FBFBF7] px-4 py-3 text-sm font-black">
-          Selected cells: {selectedCellIndices.length}. Remaining quota:{" "}
-          {remainingQuotaCells} cells.
+          Selected cells: {selectedCellIndices.length}. Ratios are
+          recommendations, not limits.
         </p>
       ) : null}
 

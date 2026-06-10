@@ -1,11 +1,14 @@
 import { createEmptyDayRecord } from "@/lib/day";
+import { normalizeEnergyBlocks } from "@/lib/energy";
 import { PROJECT_COLORS, WHITE_CANVAS, BLACK_CANVAS } from "@/lib/palette";
 import { createMigratedProjectId, validateProjectColor } from "@/lib/projects";
+import { normalizeCanvasSnapshots } from "@/lib/reality-gap";
 import { rebuildDaySlots } from "@/lib/rebuild";
 import {
   getDefaultSettings,
   normalizeGlobalProjectId,
 } from "@/lib/settings";
+import { normalizeOptionalThemeRatios } from "@/lib/theme-days";
 import { createEmptySlots, MINUTES_PER_DAY } from "@/lib/time";
 import type {
   CanvasSlot,
@@ -175,6 +178,10 @@ export function normalizeDayRecordForStorage(
       record.randomEventBlocks,
       "random-event",
     );
+    const energyBlocks = normalizeEnergyBlocks(record.energyBlocks);
+    const plannedCells = normalizeCanvasSnapshots(record.plannedCells);
+    const actualCells = normalizeCanvasSnapshots(record.actualCells);
+    const themeDayRatios = normalizeOptionalThemeRatios(record.themeDayRatios);
     const migration = migrateProjectsAndTasks({
       createdAt,
       rawProjects,
@@ -191,6 +198,16 @@ export function normalizeDayRecordForStorage(
       sleepBlocks,
       randomEventBlocks,
       tasks: migration.tasks,
+      energyBlocks,
+      ...(plannedCells ? { plannedCells } : {}),
+      ...(actualCells ? { actualCells } : {}),
+      planSnapshotAt: normalizeOptionalString(record.planSnapshotAt),
+      actualUpdatedAt: normalizeOptionalString(record.actualUpdatedAt),
+      themeDayId: normalizeOptionalString(record.themeDayId),
+      themeDayName: normalizeOptionalString(record.themeDayName),
+      ...(themeDayRatios ? { themeDayRatios } : {}),
+      dayReflection:
+        normalizeOptionalString(record.dayReflection)?.trim() || undefined,
       locked: record.locked === true,
       createdAt,
       updatedAt,
@@ -370,18 +387,6 @@ function getGlobalProjectForStoredTask({
   const project =
     projects.find((candidate) => candidate.id === normalizedProjectId) ??
     projects[0];
-
-  if (!normalizedProjectId && (projectId || projectName || existingProject)) {
-    console.warn(
-      "Canvas Ratio mapped an unknown legacy project to School.",
-      {
-        projectId,
-        projectName,
-        existingProjectId: existingProject?.id,
-        existingProjectName: existingProject?.name,
-      },
-    );
-  }
 
   return project;
 }

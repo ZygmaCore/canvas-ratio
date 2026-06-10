@@ -2,6 +2,8 @@
 
 import type { CSSProperties } from "react";
 import { getCellsForCanvas, type CellCanvasMode, type CellView } from "@/lib/cells";
+import type { CellEnergy } from "@/lib/energy";
+import type { RealityGapStatus } from "@/lib/reality-gap";
 import { getTaskProjectName } from "@/lib/projects";
 import type { DayRecord } from "@/types/canvas";
 
@@ -12,6 +14,11 @@ type CellCanvasProps = {
   selectedCellIndices: number[];
   editable: boolean;
   compact?: boolean;
+  description?: string;
+  cellsOverride?: CellView[];
+  labelByCellIndex?: Map<number, string>;
+  energyByCellIndex?: Map<number, CellEnergy>;
+  compareStatusByCellIndex?: Map<number, RealityGapStatus>;
   onToggleCell: (cellIndex: number) => void;
   onUnpaintCell: (cellIndex: number) => void;
 };
@@ -28,10 +35,15 @@ export function CellCanvas({
   selectedCellIndices,
   editable,
   compact = false,
+  description,
+  cellsOverride,
+  labelByCellIndex,
+  energyByCellIndex,
+  compareStatusByCellIndex,
   onToggleCell,
   onUnpaintCell,
 }: CellCanvasProps) {
-  const cells = day ? getCellsForCanvas(day.slots, mode) : [];
+  const cells = cellsOverride ?? (day ? getCellsForCanvas(day.slots, mode) : []);
   const taskById = new Map((day?.tasks ?? []).map((task) => [task.id, task]));
 
   return (
@@ -42,8 +54,8 @@ export function CellCanvas({
             {modeTitles[mode]}
           </h2>
           <p className="text-sm font-bold text-[#4a4a4a]">
-            Click white cells to paint. Click colored cells to clear them.
-            Black cells are unavailable.
+            {description ??
+              "Click white cells to paint. Click colored cells to clear them. Black cells are unavailable."}
           </p>
         </div>
         <span className="border-2 border-[#1A1A1A] bg-[#FFD91A] px-3 py-1 text-sm font-black">
@@ -57,6 +69,8 @@ export function CellCanvas({
           const task = cell.taskId ? taskById.get(cell.taskId) : undefined;
           const blocked = cell.state === "black";
           const disabled = !editable;
+          const energy = energyByCellIndex?.get(cell.cellIndex);
+          const compareStatus = compareStatusByCellIndex?.get(cell.cellIndex);
 
           return (
             <CellButton
@@ -66,8 +80,11 @@ export function CellCanvas({
               blocked={blocked}
               selected={selected}
               projectName={
-                task && day ? getTaskProjectName(day, task) : undefined
+                labelByCellIndex?.get(cell.cellIndex) ??
+                (task && day ? getTaskProjectName(day, task) : undefined)
               }
+              energy={energy}
+              compareStatus={compareStatus}
               compact={compact}
               onToggleCell={onToggleCell}
               onUnpaintCell={onUnpaintCell}
@@ -85,6 +102,8 @@ function CellButton({
   blocked,
   selected,
   projectName,
+  energy,
+  compareStatus,
   compact,
   onToggleCell,
   onUnpaintCell,
@@ -94,6 +113,8 @@ function CellButton({
   blocked: boolean;
   selected: boolean;
   projectName?: string;
+  energy?: CellEnergy;
+  compareStatus?: RealityGapStatus;
   compact: boolean;
   onToggleCell: (cellIndex: number) => void;
   onUnpaintCell: (cellIndex: number) => void;
@@ -104,6 +125,7 @@ function CellButton({
     colored: "cell-button--colored",
     black: "cell-button--black",
   }[cell.state];
+  const compareClass = compareStatus ? `cell-button--gap-${compareStatus}` : "";
   const label =
     cell.state === "colored"
       ? projectName ?? "Colored project time"
@@ -113,6 +135,9 @@ function CellButton({
           ? "Mixed"
           : "Free";
   const ariaLabel = getCellAriaLabel(cell, label, selected);
+  const energyLabel = energy?.level && energy.level !== "unspecified"
+    ? `${energy.level} energy`
+    : "";
 
   return (
     <button
@@ -127,9 +152,9 @@ function CellButton({
 
         onToggleCell(cell.cellIndex);
       }}
-      aria-label={ariaLabel}
+      aria-label={[ariaLabel, energyLabel].filter(Boolean).join(", ")}
       data-testid={`cell-${cell.cellIndex}`}
-      className={`cell-button ${stateClass} ${compact ? "min-h-[50px] p-1.5" : "min-h-[72px] p-2"} border-2 border-[#1A1A1A] text-left focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] ${
+      className={`cell-button ${stateClass} ${compareClass} ${compact ? "min-h-[50px] p-1.5" : "min-h-[72px] p-2"} border-2 border-[#1A1A1A] text-left focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] ${
         selected
           ? "shadow-[4px_4px_0_#1A1A1A] ring-4 ring-[#FFD91A]"
           : cell.state === "colored"
@@ -160,6 +185,23 @@ function CellButton({
       >
         {selected ? "Selected" : label}
       </span>
+      {energy?.level && energy.level !== "unspecified" ? (
+        <span
+          className={`cell-energy-marker cell-energy-marker--${energy.level}`}
+          aria-hidden="true"
+        >
+          {energy.level === "high" ? "H" : energy.level === "medium" ? "M" : "L"}
+        </span>
+      ) : null}
+      {compareStatus && compareStatus !== "matched" ? (
+        <span className="cell-gap-marker" aria-hidden="true">
+          {compareStatus === "missed"
+            ? "Missed"
+            : compareStatus === "unplanned"
+              ? "New"
+              : "Changed"}
+        </span>
+      ) : null}
     </button>
   );
 }

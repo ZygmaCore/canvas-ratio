@@ -27,6 +27,11 @@ When a random event is added, its time range becomes black and colored task cell
 - Future dates are unavailable.
 - A.M. and P.M. cell canvases.
 - Project ratios as soft recommendations.
+- Theme Days for day-specific soft recommendations.
+- Energy Layer for high/medium/low context.
+- Reality Gap for planned vs actual comparison.
+- Momentum Chain for recent direction, not perfection.
+- Canvas Replay for local week/month playback.
 - Project/task separation.
 - Project Files for long-term block-based progress.
 - Sleep and random events as black canvas.
@@ -65,6 +70,22 @@ Project Files can export a standalone HTML file. The HTML includes an embedded J
 
 Import reads that embedded JSON back into localStorage. The Project Review button copies a local prompt to the clipboard only; Canvas Ratio does not call an API.
 
+## Dynamic Canvas Layers
+
+Theme Days change today’s recommended ratios without repainting cells or changing global defaults. Defaults include Balanced Day, Deep Study Day, Coding Day, Recovery Day, Piano Day, and Admin Day. Custom themes are stored locally:
+
+```text
+canvas-ratio:theme-days:v1
+```
+
+Energy Layer marks high, medium, or low energy ranges. Energy is context only: it does not block painting and does not override project colors.
+
+Reality Gap stores compact 48-cell plan and actual snapshots on the day record. Plan mode keeps the normal canvas behavior; Actual Mode records what happened; Compare Mode is read-only.
+
+Momentum Chain reads recent saved day records from localStorage and shows project direction. It treats missing days as context, not judgment.
+
+Canvas Replay lives at `/replay`. It plays saved local days from the last 7, 14, or 30 days, summarizes the range, and can copy a Replay Review prompt with JSON only. No API call is made.
+
 ## Tech Stack
 
 - Next.js App Router
@@ -87,6 +108,16 @@ Global project settings are stored separately:
 canvas-ratio:settings
 ```
 
+Optional day fields may include:
+
+- `energyBlocks`
+- `plannedCells`
+- `actualCells`
+- `themeDayId`
+- `themeDayName`
+- `themeDayRatios`
+- `dayReflection`
+
 Day records no longer require per-day projects. Older records with embedded projects can still load, and legacy project names are normalized to the fixed global project IDs when possible.
 
 The Backup & Settings panel can:
@@ -100,7 +131,7 @@ Imports and exports are client-side only. No server upload, database, account, o
 
 ## Daily Review Prompt
 
-The Today’s Review tab includes a button that copies a Daily Review prompt to your clipboard. The prompt is built in the browser from the current day’s 48 half-hour blocks, project ratios, tasks, and unavailable time.
+The Today’s Review tab includes a button that copies a Daily Review prompt to your clipboard. The prompt is built in the browser from the current day’s 48 half-hour blocks, project ratios, tasks, unavailable time, theme, energy, reality gap, and momentum context when those fields exist.
 
 No API call is made by Canvas Ratio when copying the prompt. You choose where to paste it, and the app keeps the review data local unless you send it somewhere yourself.
 
@@ -166,6 +197,7 @@ The Docker setup runs the standalone Next.js production server with `node server
 
 - Local-first 48-cell daily canvas.
 - Project-ratio recommendation painting.
+- Theme Days, Energy Layer, Reality Gap, Momentum Chain, and Canvas Replay.
 - Sleep and random-event black canvas.
 - Automatic Pomodoro.
 - Local Daily Review prompt copy.

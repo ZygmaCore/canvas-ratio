@@ -2,7 +2,9 @@
 
 A local-first visual time allocation app based on canvas, colors, and ratios.
 
-Canvas Ratio treats each day like a drawing book. Free space is open time, unavailable space is blocked time, and colored space belongs to projects and tasks.
+Canvas Ratio treats each day like a canvas. Free space is open time, unavailable space is blocked time, and colored space belongs to intentional work.
+
+The root page explains the full flow: add unavailable time, set recommended ratios, paint the day, use Task Dump for remaining free blocks when useful, and copy Daily Review at the end of the day.
 
 ## Core Concept
 
@@ -27,13 +29,9 @@ When a random event is added, its time range becomes black and colored task cell
 - Future dates are unavailable.
 - A.M. and P.M. cell canvases.
 - Project ratios as soft recommendations.
-- Theme Days for day-specific soft recommendations.
-- Energy Layer for high/medium/low context.
-- Reality Gap for planned vs actual comparison.
-- Momentum Chain for recent direction, not perfection.
-- Canvas Replay for local week/month playback.
 - Project/task separation.
 - Project Files for long-term block-based progress.
+- Task Dump side panel for listing unplanned tasks, copying a planning prompt, and applying pasted AI JSON back to free blocks.
 - Sleep and random events as black canvas.
 - Random events replan the remaining day by clearing colored task assignments after the event end.
 - Sleep blocks and existing random-event blocks stay black during replans.
@@ -41,6 +39,23 @@ When a random event is added, its time range becomes black and colored task cell
 - Automatic clock-based Pomodoro 25/5 rhythm.
 - Local JSON export/import backup tools.
 - Daily Review prompt builder that copies a local, structured day summary.
+
+## Task Dump
+
+Task Dump lives in the Canvas page side panel on desktop and the Dump tab on mobile. It helps plan remaining white/free blocks without sending data anywhere automatically.
+
+- It asks only for task name, optional note, and block count.
+- It does not ask for a project.
+- One block equals one 30-minute free canvas cell.
+- Total dumped task blocks cannot exceed current white/free blocks.
+- If unavailable time changes and the dump exceeds current free blocks, the dump is preserved and copy/apply are disabled until the user reduces it or frees canvas blocks.
+- Copy Planning Prompt copies a compact 48-block JSON prompt to the clipboard.
+- The prompt can be pasted into ChatGPT, Gemini, Claude, or another external chatbot. The external AI infers `academic`, `professional`, or `personal` for each scheduled block from the task name and note.
+- Paste AI Result accepts pure JSON, markdown-wrapped JSON, or longer answers containing a JSON assignment.
+- Apply to Canvas validates the pasted assignment against the current free blocks before coloring anything.
+- Valid pasted assignments become project-colored Task Dump scheduled cells and count toward School, Work, or Personal recommendation usage.
+- Canvas Ratio does not call an AI API.
+- No data leaves the browser unless the user pastes it somewhere else.
 
 ## Project Files
 
@@ -70,22 +85,6 @@ Project Files can export a standalone HTML file. The HTML includes an embedded J
 
 Import reads that embedded JSON back into localStorage. The Project Review button copies a local prompt to the clipboard only; Canvas Ratio does not call an API.
 
-## Dynamic Canvas Layers
-
-Theme Days change today’s recommended ratios without repainting cells or changing global defaults. Defaults include Balanced Day, Deep Study Day, Coding Day, Recovery Day, Piano Day, and Admin Day. Custom themes are stored locally:
-
-```text
-canvas-ratio:theme-days:v1
-```
-
-Energy Layer marks high, medium, or low energy ranges. Energy is context only: it does not block painting and does not override project colors.
-
-Reality Gap stores compact 48-cell plan and actual snapshots on the day record. Plan mode keeps the normal canvas behavior; Actual Mode records what happened; Compare Mode is read-only.
-
-Momentum Chain reads recent saved day records from localStorage and shows project direction. It treats missing days as context, not judgment.
-
-Canvas Replay lives at `/replay`. It plays saved local days from the last 7, 14, or 30 days, summarizes the range, and can copy a Replay Review prompt with JSON only. No API call is made.
-
 ## Tech Stack
 
 - Next.js App Router
@@ -108,17 +107,12 @@ Global project settings are stored separately:
 canvas-ratio:settings
 ```
 
-Optional day fields may include:
-
-- `energyBlocks`
-- `plannedCells`
-- `actualCells`
-- `themeDayId`
-- `themeDayName`
-- `themeDayRatios`
-- `dayReflection`
-
 Day records no longer require per-day projects. Older records with embedded projects can still load, and legacy project names are normalized to the fixed global project IDs when possible.
+
+Day records may also include:
+
+- `taskDump`: local Task Dump items for the selected day.
+- `tasks[].source`: `project-paint` for normal colored project cells or `task-dump` for pasted Task Dump scheduled cells.
 
 The Backup & Settings panel can:
 
@@ -131,7 +125,7 @@ Imports and exports are client-side only. No server upload, database, account, o
 
 ## Daily Review Prompt
 
-The Today’s Review tab includes a button that copies a Daily Review prompt to your clipboard. The prompt is built in the browser from the current day’s 48 half-hour blocks, project ratios, tasks, unavailable time, theme, energy, reality gap, and momentum context when those fields exist.
+The Today’s Review button copies a Daily Review prompt to your clipboard. The prompt is built in the browser from the current day’s 48 half-hour blocks, project ratios, tasks, unavailable time, and Task Dump scheduled cells when they exist.
 
 No API call is made by Canvas Ratio when copying the prompt. You choose where to paste it, and the app keeps the review data local unless you send it somewhere yourself.
 
@@ -197,9 +191,9 @@ The Docker setup runs the standalone Next.js production server with `node server
 
 - Local-first 48-cell daily canvas.
 - Project-ratio recommendation painting.
-- Theme Days, Energy Layer, Reality Gap, Momentum Chain, and Canvas Replay.
 - Sleep and random-event black canvas.
 - Automatic Pomodoro.
 - Local Daily Review prompt copy.
+- Local Task Dump planning prompt copy and pasted JSON apply.
 - JSON backup/import.
 - Production Docker build.

@@ -9,38 +9,25 @@ import { CellCanvas } from "@/components/cell-canvas";
 import { DailyReviewButton } from "@/components/daily-review-button";
 import { DayDebugPanel } from "@/components/day-debug-panel";
 import { DayStatusBadge } from "@/components/day-status-badge";
-import { EnergyPanel } from "@/components/energy-panel";
 import { InlineMessage } from "@/components/inline-message";
-import { MomentumPanel } from "@/components/momentum-panel";
 import { PomodoroPanel } from "@/components/pomodoro-panel";
 import { ProjectRatioForm } from "@/components/project-form";
 import { ProjectList } from "@/components/project-list";
 import { RandomEventForm } from "@/components/random-event-form";
-import { RealityGapPanel } from "@/components/reality-gap-panel";
 import { SleepForm } from "@/components/sleep-form";
+import { TaskDumpSidePanel } from "@/components/task-dump-side-panel";
 import { TaskForm } from "@/components/task-form";
 import { TaskList } from "@/components/task-list";
-import { ThemeDaySelector } from "@/components/theme-day-selector";
 import { useDayRecord } from "@/hooks/use-day-record";
 import { applyRandomEventReplan, createTimeBlock } from "@/lib/blocks";
-import { getCellState, type CellCanvasMode, type CellView } from "@/lib/cells";
+import { getCellState } from "@/lib/cells";
 import { summarizeCanvas, summarizeSlots } from "@/lib/canvas-segments";
-import { getEnergyByCellIndex } from "@/lib/energy";
 import { formatSeconds, getPomodoroState } from "@/lib/pomodoro";
 import {
   getProjectRatioTotal,
   getProjectUsageFromSlots,
   validateProjectRatios,
 } from "@/lib/projects";
-import {
-  calculateRealityGap,
-  ensureActualCells,
-  getCompareStatusMap,
-  getSnapshotLabelMap,
-  snapshotCellsToCellViews,
-  updateActualCell,
-  type RealityMode,
-} from "@/lib/reality-gap";
 import { rebuildDaySlots } from "@/lib/rebuild";
 import {
   getDefaultSettings,
@@ -48,11 +35,6 @@ import {
   updateProjectRatios,
 } from "@/lib/settings";
 import { createTaskRecord, type TaskRecordInput } from "@/lib/tasks";
-import {
-  applyThemeToDay,
-  getEffectiveProjectsForDay,
-  type ThemeDay,
-} from "@/lib/theme-days";
 import { getTodayDateKey } from "@/lib/time";
 import { unpaintCell } from "@/lib/unpaint";
 import type { DayRecord, ProjectRecord, TaskInputMode } from "@/types/canvas";
@@ -61,19 +43,20 @@ type CanvasPageClientProps = {
   initialDateKey: string;
 };
 
-type DrawerTab = "projects" | "paint" | "unavailable" | "review";
-type MobileTab = "canvas" | "projects" | "paint" | "review";
+type DrawerTab = "dump" | "projects" | "paint" | "unavailable" | "review";
+type MobileTab = "canvas" | "dump" | "paint" | "review";
 
 const drawerTabs: { id: DrawerTab; label: string }[] = [
+  { id: "dump", label: "Dump" },
   { id: "projects", label: "Ratios" },
   { id: "paint", label: "Paint" },
-  { id: "unavailable", label: "Unavailable Time" },
-  { id: "review", label: "Today’s Review" },
+  { id: "unavailable", label: "Unavailable" },
+  { id: "review", label: "Review" },
 ];
 
 const mobileTabs: { id: MobileTab; label: string }[] = [
   { id: "canvas", label: "Canvas" },
-  { id: "projects", label: "Ratios" },
+  { id: "dump", label: "Dump" },
   { id: "paint", label: "Paint" },
   { id: "review", label: "Review" },
 ];
@@ -86,19 +69,15 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
     useState<TaskInputMode>("manual-cell");
   const [cellError, setCellError] = useState("");
   const [activeDrawerTab, setActiveDrawerTab] =
-    useState<DrawerTab>("projects");
+    useState<DrawerTab>("dump");
   const [activeMobileTab, setActiveMobileTab] =
     useState<MobileTab>("canvas");
-  const [realityMode, setRealityMode] = useState<RealityMode>("plan");
   const [settings, setSettings] = useState(() => getDefaultSettings());
   const [now, setNow] = useState<Date | null>(null);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const { day, status, editable, loading, saveDay, resetDay, importDay } =
     useDayRecord(selectedDateKey);
-  const projects = useMemo(
-    () => getEffectiveProjectsForDay(settings.projects, day),
-    [settings.projects, day],
-  );
+  const projects = settings.projects;
 
   const slotSummaries = useMemo(() => {
     const slots = day?.slots ?? [];
@@ -122,39 +101,18 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
   );
   const selectedProject =
     projects.find((project) => project.id === selectedProjectId) ?? null;
-  const energyByCellIndex = useMemo(() => getEnergyByCellIndex(day), [day]);
-  const realityGapSummary = useMemo(
-    () => (day ? calculateRealityGap(day, projects) : null),
-    [day, projects],
-  );
-  const actualCells = useMemo(
-    () => (day ? ensureActualCells(day, projects) : []),
-    [day, projects],
-  );
-  const displayedSnapshotCells =
-    realityMode === "actual"
-      ? actualCells
-      : realityMode === "compare" && realityGapSummary
-        ? realityGapSummary.cells.map((cell) => cell.actual)
-        : null;
-  const displayedCellViews = displayedSnapshotCells
-    ? snapshotCellsToCellViews(displayedSnapshotCells)
-    : null;
-  const displayedLabelByCellIndex = displayedSnapshotCells
-    ? getSnapshotLabelMap(displayedSnapshotCells, projects)
-    : undefined;
-  const compareStatusByCellIndex =
-    realityMode === "compare" ? getCompareStatusMap(realityGapSummary) : undefined;
   const manualPaintingActive = taskInputMode === "manual-cell";
   const pomodoroState = now ? getPomodoroState(now) : null;
   const totalRatio = getProjectRatioTotal(projects);
   const hasProjects = projects.length > 0;
   const activePanelTab: DrawerTab = isDesktop
     ? activeDrawerTab
-    : activeMobileTab === "projects"
-      ? "projects"
+    : activeMobileTab === "dump"
+      ? "dump"
       : activeMobileTab === "paint"
-      ? "paint"
+      ? activeDrawerTab === "projects"
+        ? "projects"
+        : "paint"
       : activeMobileTab === "review"
         ? "review"
         : activeDrawerTab;
@@ -163,7 +121,6 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
     setSelectedCellIndices([]);
     setCellError("");
     setActiveMobileTab("canvas");
-    setRealityMode("plan");
   }, [selectedDateKey]);
 
   useEffect(() => {
@@ -205,7 +162,7 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
 
   function openProjectsPanel() {
     setActiveDrawerTab("projects");
-    setActiveMobileTab("projects");
+    setActiveMobileTab("paint");
   }
 
   function handleUpdateProjectRatios(ratios: Record<string, number>) {
@@ -215,16 +172,6 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
 
     const nextSettings = updateProjectRatios(ratios);
     setSettings(nextSettings);
-    setSelectedCellIndices([]);
-    setCellError("");
-  }
-
-  function handleApplyTheme(theme: ThemeDay) {
-    if (!day || !editable) {
-      return;
-    }
-
-    saveDay(applyThemeToDay(day, theme));
     setSelectedCellIndices([]);
     setCellError("");
   }
@@ -325,16 +272,6 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
       return;
     }
 
-    if (realityMode === "compare") {
-      setCellError("Compare mode is read-only.");
-      return;
-    }
-
-    if (realityMode === "actual") {
-      handleToggleActualCell(cellIndex);
-      return;
-    }
-
     const cell = getCellState(day.slots, cellIndex);
 
     if (cell.state === "black") {
@@ -368,27 +305,6 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
         (firstCell, secondCell) => firstCell - secondCell,
       ),
     );
-  }
-
-  function handleToggleActualCell(cellIndex: number) {
-    if (!day || !editable) {
-      return;
-    }
-
-    const currentCell = actualCells[cellIndex];
-
-    if (currentCell?.state === "unavailable") {
-      setCellError("Unavailable time cannot be painted.");
-      return;
-    }
-
-    if (currentCell?.state !== "colored" && !selectedProject) {
-      setCellError("Choose a project before coloring actual cells.");
-      return;
-    }
-
-    saveDay(updateActualCell(day, projects, cellIndex, selectedProject));
-    setSelectedCellIndices([]);
   }
 
   function handleUnpaintCell(cellIndex: number) {
@@ -431,13 +347,6 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
 
     return (
       <div className="space-y-4">
-        <ThemeDaySelector
-          day={day}
-          projects={projects}
-          editable={editable}
-          onApplyTheme={handleApplyTheme}
-        />
-
         {status === "past" ? (
           <InlineMessage type="info">
             Past canvas is read-only.
@@ -457,42 +366,20 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
             day={day}
             selectedProjectId={selectedProjectId}
             selectedCellIndices={selectedCellIndices}
-            editable={editable && realityMode !== "compare"}
+            editable={editable}
             compact
-            description={getCanvasModeDescription(realityMode)}
-            cellsOverride={
-              displayedCellViews
-                ? getCellViewsForMode(displayedCellViews, "am")
-                : undefined
-            }
-            labelByCellIndex={displayedLabelByCellIndex}
-            energyByCellIndex={energyByCellIndex}
-            compareStatusByCellIndex={compareStatusByCellIndex}
             onToggleCell={handleToggleCell}
-            onUnpaintCell={
-              realityMode === "plan" ? handleUnpaintCell : handleToggleCell
-            }
+            onUnpaintCell={handleUnpaintCell}
           />
           <CellCanvas
             mode="pm"
             day={day}
             selectedProjectId={selectedProjectId}
             selectedCellIndices={selectedCellIndices}
-            editable={editable && realityMode !== "compare"}
+            editable={editable}
             compact
-            description={getCanvasModeDescription(realityMode)}
-            cellsOverride={
-              displayedCellViews
-                ? getCellViewsForMode(displayedCellViews, "pm")
-                : undefined
-            }
-            labelByCellIndex={displayedLabelByCellIndex}
-            energyByCellIndex={energyByCellIndex}
-            compareStatusByCellIndex={compareStatusByCellIndex}
             onToggleCell={handleToggleCell}
-            onUnpaintCell={
-              realityMode === "plan" ? handleUnpaintCell : handleToggleCell
-            }
+            onUnpaintCell={handleUnpaintCell}
           />
         </section>
 
@@ -512,6 +399,26 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
   }
 
   function renderPanelContent(tab: DrawerTab) {
+    if (tab === "dump") {
+      return (
+        <PanelStack>
+          <TaskDumpSidePanel
+            day={day}
+            settings={settings}
+            editable={editable}
+            status={status}
+            onSaveDay={saveDay}
+          />
+          <DailyReviewButton
+            day={day}
+            settings={settings}
+            disabled={!day || status === "future"}
+          />
+          <PomodoroPanel day={day} readOnly={!editable} compact />
+        </PanelStack>
+      );
+    }
+
     if (tab === "projects") {
       return (
         <PanelStack>
@@ -573,7 +480,7 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
               onOpenProjects={openProjectsPanel}
             />
           ) : null}
-          {editable && hasProjects && realityMode === "plan" ? (
+          {editable && hasProjects ? (
             <TaskForm
               projects={projects}
               slots={day?.slots ?? []}
@@ -592,12 +499,6 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
               onClearSelectedCells={() => setSelectedCellIndices([])}
               onAddTask={handleAddTask}
             />
-          ) : editable && hasProjects ? (
-            <InlineMessage type="info">
-              {realityMode === "actual"
-                ? "Actual Mode uses direct canvas clicks and does not add plan tasks."
-                : "Compare mode is read-only."}
-            </InlineMessage>
           ) : !editable ? (
             <InlineMessage type="info">
               This date is read-only. Painting controls are disabled.
@@ -637,7 +538,6 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
             editable={editable}
             onDeleteBlock={handleDeleteBlock}
           />
-          <EnergyPanel day={day} editable={editable} onSaveDay={saveDay} />
         </PanelStack>
       );
     }
@@ -652,18 +552,9 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
           />
           <DailyReviewButton
             day={day}
-            settings={{ projects }}
+            settings={settings}
             disabled={!day || status === "future"}
           />
-          <RealityGapPanel
-            day={day}
-            projects={projects}
-            editable={editable}
-            mode={realityMode}
-            onModeChange={setRealityMode}
-            onSaveDay={saveDay}
-          />
-          <MomentumPanel projects={projects} />
           <PomodoroPanel day={day} readOnly={!editable} compact />
           <CanvasSummaryGrid
             amSummary={slotSummaries.amSummary}
@@ -672,16 +563,13 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
             compact
           />
           {!isDesktop ? (
-            <>
-              <MobileUnavailableDetails
-                editable={editable}
-                day={day}
-                onAddSleep={handleAddSleep}
-                onAddRandomEvent={handleAddRandomEvent}
-                onDeleteBlock={handleDeleteBlock}
-              />
-              <EnergyPanel day={day} editable={editable} onSaveDay={saveDay} />
-            </>
+            <MobileUnavailableDetails
+              editable={editable}
+              day={day}
+              onAddSleep={handleAddSleep}
+              onAddRandomEvent={handleAddRandomEvent}
+              onDeleteBlock={handleDeleteBlock}
+            />
           ) : null}
           <BackupSettingsDetails
             editable={editable}
@@ -714,19 +602,13 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
                 href="/"
                 className="border-2 border-[#1A1A1A] bg-white px-3 py-2 text-sm font-black text-[#2F5FBF] shadow-[3px_3px_0_#FFD91A] underline-offset-4 hover:underline focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]"
               >
-                Canvas Ratio
+                How it works
               </Link>
               <Link
                 href="/project-files"
                 className="border-2 border-[#1A1A1A] bg-[#FFD91A] px-3 py-2 text-sm font-black shadow-[3px_3px_0_#1A1A1A] underline-offset-4 hover:underline focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]"
               >
                 Project Files
-              </Link>
-              <Link
-                href="/replay"
-                className="border-2 border-[#1A1A1A] bg-white px-3 py-2 text-sm font-black text-[#2F5FBF] shadow-[3px_3px_0_#FFD91A] underline-offset-4 hover:underline focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]"
-              >
-                Replay
               </Link>
               <h1 className="text-2xl font-black leading-tight sm:text-3xl">
                 Today’s Canvas
@@ -765,17 +647,23 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <TopMetric
               label="Free"
-              value={formatDurationLabel(slotSummaries.fullDaySummary.whiteMinutes)}
+              value={formatBlockCountLabel(
+                slotSummaries.fullDaySummary.whiteMinutes,
+              )}
               tone="white"
             />
             <TopMetric
               label="Unavailable"
-              value={formatDurationLabel(slotSummaries.fullDaySummary.blackMinutes)}
+              value={formatBlockCountLabel(
+                slotSummaries.fullDaySummary.blackMinutes,
+              )}
               tone="black"
             />
             <TopMetric
               label="Colored"
-              value={formatDurationLabel(slotSummaries.fullDaySummary.coloredMinutes)}
+              value={formatBlockCountLabel(
+                slotSummaries.fullDaySummary.coloredMinutes,
+              )}
               tone="colored"
             />
             <TopMetric
@@ -806,7 +694,7 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
           aria-label="Canvas controls"
         >
           <nav
-            className="hidden grid-cols-4 border-b-2 border-[#1A1A1A] bg-white lg:grid"
+            className="hidden grid-cols-5 border-b-2 border-[#1A1A1A] bg-white lg:grid"
             aria-label="Canvas control tabs"
           >
             {drawerTabs.map((tab) => (
@@ -847,6 +735,9 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
             label={tab.label}
             active={activeMobileTab === tab.id}
             onClick={() => {
+              if (tab.id === "paint") {
+                setActiveDrawerTab("paint");
+              }
               setActiveMobileTab(tab.id);
             }}
           />
@@ -1234,40 +1125,10 @@ function getRecommendationDifferenceLabel(differenceCells: number): string {
   return "On recommendation";
 }
 
-function getCellViewsForMode(
-  cells: CellView[],
-  mode: CellCanvasMode,
-): CellView[] {
-  return cells.filter((cell) =>
-    mode === "am" ? cell.cellIndex < 24 : cell.cellIndex >= 24,
-  );
-}
+function formatBlockCountLabel(minutes: number): string {
+  const blocks = Math.floor(minutes / 30);
 
-function getCanvasModeDescription(mode: RealityMode): string {
-  if (mode === "actual") {
-    return "Actual Mode: click free cells to record what happened. Click colored cells to clear them.";
-  }
-
-  if (mode === "compare") {
-    return "Compare Mode: read-only view of what changed between plan and actual.";
-  }
-
-  return "Click white cells to paint. Click colored cells to clear them. Black cells are unavailable.";
-}
-
-function formatDurationLabel(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-
-  if (hours === 0) {
-    return `${remainingMinutes}m`;
-  }
-
-  if (remainingMinutes === 0) {
-    return `${hours}h`;
-  }
-
-  return `${hours}h ${remainingMinutes}m`;
+  return `${blocks} block${blocks === 1 ? "" : "s"}`;
 }
 
 function useMediaQuery(query: string): boolean {

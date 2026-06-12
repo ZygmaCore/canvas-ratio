@@ -17,6 +17,7 @@ import type {
   CanvasSlot,
   TargetCanvas,
   TaskInputMode,
+  TaskSource,
   TaskRecord,
 } from "@/types/canvas";
 
@@ -25,6 +26,7 @@ export type TaskRecordInput = {
   taskName: string;
   inputMode: TaskInputMode;
   assignedMinutes: number[];
+  source?: TaskSource;
   targetCanvas?: TargetCanvas;
   projectName?: string;
   color?: string;
@@ -65,6 +67,7 @@ export function createTaskRecord(input: TaskRecordInput): TaskRecord {
     projectId,
     projectName: input.projectName?.trim() || undefined,
     taskName,
+    source: input.source ?? "project-paint",
     color: input.color,
     inputMode: input.inputMode,
     targetCanvas: input.targetCanvas ?? "full",

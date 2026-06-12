@@ -17,6 +17,7 @@ export const CANVAS_PALETTE = [
 
 export const WHITE_CANVAS = CANVAS_PALETTE[0];
 export const BLACK_CANVAS = CANVAS_PALETTE[11];
+export const TASK_DUMP_CANVAS = CANVAS_PALETTE[9];
 export const PROJECT_COLORS = CANVAS_PALETTE.filter(
   (color) => color.role === "project",
 );

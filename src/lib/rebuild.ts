@@ -43,6 +43,7 @@ export function rebuildDaySlots(day: DayRecord): DayRecord {
 function normalizeTask(task: TaskRecord): TaskRecord {
   return {
     ...task,
+    source: task.source ?? "project-paint",
     projectId: task.projectId ?? "",
     targetCanvas: task.targetCanvas ?? "full",
     assignedMinutes: task.assignedMinutes ?? [],

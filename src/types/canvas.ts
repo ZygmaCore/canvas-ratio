@@ -5,10 +5,6 @@ export type CanvasColor = {
 };
 
 export type CanvasSlotState = "white" | "black" | "colored";
-export type EnergyLevel = "high" | "medium" | "low";
-export type SnapshotCellState = "free" | "unavailable" | "colored";
-
-export type GlobalProjectId = "academic" | "professional" | "personal";
 
 export type CanvasSlot = {
   minute: number;
@@ -28,16 +24,6 @@ export type TimeBlock = {
   description?: string;
 };
 
-export type EnergyBlock = {
-  id: string;
-  level: EnergyLevel;
-  startTime: string;
-  endTime: string;
-  note?: string;
-  createdAt: string;
-  updatedAt: string;
-};
-
 export type ProjectRecord = {
   id: string;
   name: string;
@@ -51,11 +37,14 @@ export type TaskInputMode = "manual-cell" | "ratio" | "time-range" | "duration";
 
 export type TargetCanvas = "am" | "pm" | "full";
 
+export type TaskSource = "project-paint" | "task-dump";
+
 export type TaskRecord = {
   id: string;
   projectId: string;
   projectName?: string;
   taskName: string;
+  source?: TaskSource;
   color?: string;
   inputMode: TaskInputMode;
   targetCanvas?: TargetCanvas;
@@ -69,6 +58,15 @@ export type TaskRecord = {
   createdAt: string;
 };
 
+export type TaskDumpItem = {
+  id: string;
+  taskName: string;
+  note?: string;
+  blockCount: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type DayRecord = {
   date: string;
   slots: CanvasSlot[];
@@ -76,26 +74,10 @@ export type DayRecord = {
   sleepBlocks: TimeBlock[];
   randomEventBlocks: TimeBlock[];
   tasks: TaskRecord[];
-  energyBlocks?: EnergyBlock[];
-  plannedCells?: CanvasCellSnapshot[];
-  actualCells?: CanvasCellSnapshot[];
-  planSnapshotAt?: string;
-  actualUpdatedAt?: string;
-  themeDayId?: string;
-  themeDayName?: string;
-  themeDayRatios?: Partial<Record<GlobalProjectId, number>>;
-  dayReflection?: string;
+  taskDump?: TaskDumpItem[];
   locked?: boolean;
   createdAt: string;
   updatedAt: string;
-};
-
-export type CanvasCellSnapshot = {
-  index: number;
-  state: SnapshotCellState;
-  projectId?: GlobalProjectId;
-  taskName?: string;
-  color?: string;
 };
 
 export type PomodoroState = {

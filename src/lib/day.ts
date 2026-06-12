@@ -13,7 +13,7 @@ export function createEmptyDayRecord(dateKey: string): DayRecord {
     sleepBlocks: [],
     randomEventBlocks: [],
     tasks: [],
-    energyBlocks: [],
+    taskDump: [],
     locked: false,
     createdAt: now,
     updatedAt: now,

@@ -1,14 +1,16 @@
 import { createEmptyDayRecord } from "@/lib/day";
-import { normalizeEnergyBlocks } from "@/lib/energy";
-import { PROJECT_COLORS, WHITE_CANVAS, BLACK_CANVAS } from "@/lib/palette";
+import {
+  BLACK_CANVAS,
+  PROJECT_COLORS,
+  WHITE_CANVAS,
+} from "@/lib/palette";
 import { createMigratedProjectId, validateProjectColor } from "@/lib/projects";
-import { normalizeCanvasSnapshots } from "@/lib/reality-gap";
 import { rebuildDaySlots } from "@/lib/rebuild";
 import {
   getDefaultSettings,
   normalizeGlobalProjectId,
 } from "@/lib/settings";
-import { normalizeOptionalThemeRatios } from "@/lib/theme-days";
+import { normalizeTaskDumpItems } from "@/lib/task-dump";
 import { createEmptySlots, MINUTES_PER_DAY } from "@/lib/time";
 import type {
   CanvasSlot,
@@ -17,6 +19,7 @@ import type {
   ProjectRecord,
   TargetCanvas,
   TaskInputMode,
+  TaskSource,
   TaskRecord,
   TimeBlock,
 } from "@/types/canvas";
@@ -40,6 +43,7 @@ const taskInputModes = new Set<TaskInputMode>([
   "time-range",
   "duration",
 ]);
+const taskSources = new Set<TaskSource>(["project-paint", "task-dump"]);
 const targetCanvases = new Set<TargetCanvas>(["am", "pm", "full"]);
 const slotStates = new Set<CanvasSlotState>(["white", "black", "colored"]);
 
@@ -178,10 +182,7 @@ export function normalizeDayRecordForStorage(
       record.randomEventBlocks,
       "random-event",
     );
-    const energyBlocks = normalizeEnergyBlocks(record.energyBlocks);
-    const plannedCells = normalizeCanvasSnapshots(record.plannedCells);
-    const actualCells = normalizeCanvasSnapshots(record.actualCells);
-    const themeDayRatios = normalizeOptionalThemeRatios(record.themeDayRatios);
+    const taskDump = normalizeTaskDumpItems(record.taskDump);
     const migration = migrateProjectsAndTasks({
       createdAt,
       rawProjects,
@@ -198,16 +199,7 @@ export function normalizeDayRecordForStorage(
       sleepBlocks,
       randomEventBlocks,
       tasks: migration.tasks,
-      energyBlocks,
-      ...(plannedCells ? { plannedCells } : {}),
-      ...(actualCells ? { actualCells } : {}),
-      planSnapshotAt: normalizeOptionalString(record.planSnapshotAt),
-      actualUpdatedAt: normalizeOptionalString(record.actualUpdatedAt),
-      themeDayId: normalizeOptionalString(record.themeDayId),
-      themeDayName: normalizeOptionalString(record.themeDayName),
-      ...(themeDayRatios ? { themeDayRatios } : {}),
-      dayReflection:
-        normalizeOptionalString(record.dayReflection)?.trim() || undefined,
+      taskDump,
       locked: record.locked === true,
       createdAt,
       updatedAt,
@@ -329,28 +321,30 @@ function normalizeStoredTask(
   }
 
   const projectId = normalizeOptionalString(task.projectId);
+  const source = normalizeTaskSource(task.source, projectId);
   const existingProject = projectId
     ? context.migratedProjectMap.get(projectId)
     : undefined;
   const projectName =
     normalizeOptionalString(task.projectName)?.trim() ||
     existingProject?.name;
-  const project = getGlobalProjectForStoredTask({
-    projectId,
-    projectName,
-    existingProject,
-  });
   const assignedMinutes = normalizeAssignedMinutes(
     task.assignedMinutes ?? task.minutes,
   );
   const inputMode = normalizeTaskInputMode(task.inputMode);
   const targetCanvas = normalizeTargetCanvas(task.targetCanvas);
+  const project = getGlobalProjectForStoredTask({
+    projectId,
+    projectName,
+    existingProject,
+  });
 
   return {
     id: normalizeOptionalString(task.id) ?? createTaskId(),
     projectId: project.id,
     projectName: project.name,
     taskName,
+    source,
     color: project.color,
     inputMode,
     targetCanvas,
@@ -387,6 +381,18 @@ function getGlobalProjectForStoredTask({
   const project =
     projects.find((candidate) => candidate.id === normalizedProjectId) ??
     projects[0];
+
+  if (!normalizedProjectId && (projectId || projectName || existingProject)) {
+    console.warn(
+      "Canvas Ratio mapped an unknown legacy project to School.",
+      {
+        projectId,
+        projectName,
+        existingProjectId: existingProject?.id,
+        existingProjectName: existingProject?.name,
+      },
+    );
+  }
 
   return project;
 }
@@ -581,6 +587,17 @@ function normalizeTaskInputMode(inputMode: unknown): TaskInputMode {
   return taskInputModes.has(inputMode as TaskInputMode)
     ? (inputMode as TaskInputMode)
     : "manual-cell";
+}
+
+function normalizeTaskSource(
+  source: unknown,
+  projectId?: string,
+): TaskSource {
+  if (taskSources.has(source as TaskSource)) {
+    return source as TaskSource;
+  }
+
+  return projectId === "task-dump" ? "task-dump" : "project-paint";
 }
 
 function normalizeTargetCanvas(targetCanvas: unknown): TargetCanvas {

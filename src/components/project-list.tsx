@@ -2,6 +2,7 @@ import {
   getProjectTaskCount,
   getProjectUsageFromSlots,
 } from "@/lib/projects";
+import { getActiveProjects } from "@/lib/settings";
 import { InlineMessage } from "@/components/inline-message";
 import type { DayRecord } from "@/types/canvas";
 
@@ -19,6 +20,7 @@ export function ProjectList({
   selectedProjectId,
 }: ProjectListProps) {
   const usage = day ? getProjectUsageFromSlots(day, projects) : [];
+  const activeProjects = getActiveProjects(projects);
 
   return (
     <section className="rounded-lg border-2 border-[#1A1A1A] bg-[#FFFFFF] p-5 shadow-[4px_4px_0_#1A1A1A]">
@@ -26,17 +28,17 @@ export function ProjectList({
         <div>
           <h2 className="text-2xl font-black">Set your daily ratios</h2>
           <p className="mt-1 text-sm font-bold">
-            Ratios split non-black paintable canvas time.
+            Ratios are recommendations, not limits.
           </p>
         </div>
         <span className="border-2 border-[#1A1A1A] bg-[#FFD91A] px-3 py-1 text-sm font-black">
-          Fixed projects
+          {activeProjects.length} active
         </span>
       </div>
 
       {projects.length === 0 ? (
         <InlineMessage type="warning" className="mt-4">
-          Project settings could not be loaded.
+          Create your first project to start painting.
         </InlineMessage>
       ) : null}
 
@@ -77,6 +79,7 @@ export function ProjectList({
                         {project.ratio}% ratio / {taskCount} task
                         {taskCount === 1 ? "" : "s"}
                         {selected ? " / selected" : ""}
+                        {project.archived ? " / archived" : ""}
                       </p>
                     </div>
                   </div>
@@ -117,9 +120,9 @@ export function ProjectList({
                   ) : null}
                 </div>
 
-                {editable ? (
-                  <span className="min-h-10 shrink-0 border-2 border-[#1A1A1A] bg-white px-3 py-2 text-sm font-black">
-                    Fixed
+                {project.archived ? (
+                  <span className="min-h-10 shrink-0 border-2 border-[#1A1A1A] bg-[#EFEDE4] px-3 py-2 text-sm font-black">
+                    Archived
                   </span>
                 ) : null}
               </div>

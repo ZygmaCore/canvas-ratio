@@ -114,7 +114,7 @@ export function assignMinutesByCellIndices(
     const cell = getCellState(slots, cellIndex);
 
     if (cell.state === "black") {
-      throw new Error("Unavailable time cannot be painted.");
+      throw new Error("Black blocks cannot be painted.");
     }
 
     if (cell.state === "colored" || cell.isMixed) {

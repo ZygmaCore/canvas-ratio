@@ -1,10 +1,5 @@
 import { cellIndexToMinuteRange, validateCellIndex } from "@/lib/cells";
 import { rebuildDaySlots } from "@/lib/rebuild";
-import {
-  getDefaultSettings,
-  isGlobalProjectId,
-  type GlobalProjectId,
-} from "@/lib/settings";
 import type { TaskDumpPlanningData } from "@/lib/task-dump-prompt";
 import { minuteToTime } from "@/lib/time";
 import type { DayRecord, TaskRecord } from "@/types/canvas";
@@ -16,7 +11,7 @@ export type TaskDumpAssignment = {
     endTime?: string;
     taskName: string;
     note?: string;
-    projectId?: GlobalProjectId | string;
+    projectId?: string;
     projectName?: string;
   }>;
 };
@@ -52,6 +47,7 @@ export function validateTaskDumpAssignment(
   }
 
   const freeBlockIndexes = new Set(currentPlanningData.freeBlockIndexes);
+  const projectIds = new Set(currentPlanningData.projects.map((project) => project.id));
   const taskBlockCounts = new Map<string, number>();
 
   for (const item of currentPlanningData.taskDump) {
@@ -84,7 +80,7 @@ export function validateTaskDumpAssignment(
       throw new Error(`Unknown task: ${item.taskName}.`);
     }
 
-    item.projectId = requireNormalizedProjectId(item);
+    item.projectId = requireValidProjectId(item, projectIds);
     validateAssignmentTimes(item, currentPlanningData);
     assignedCounts.set(
       item.taskName,
@@ -115,18 +111,19 @@ export function validateTaskDumpAssignment(
 export function applyTaskDumpAssignmentToDay(
   day: DayRecord,
   assignment: TaskDumpAssignment,
+  currentPlanningData: TaskDumpPlanningData,
 ): DayRecord {
   const now = new Date().toISOString();
   const dumpItemByName = new Map(
     (day.taskDump ?? []).map((item) => [item.taskName, item]),
   );
   const projectById = new Map(
-    getDefaultSettings().projects.map((project) => [project.id, project]),
+    currentPlanningData.projects.map((project) => [project.id, project]),
   );
   const assignmentGroups = new Map<string, TaskDumpAssignment["assignments"]>();
 
   for (const item of assignment.assignments) {
-    const projectId = requireNormalizedProjectId(item);
+    const projectId = item.projectId ?? "";
     const groupKey = `${item.taskName}\u0000${projectId}`;
     const group = assignmentGroups.get(groupKey) ?? [];
 
@@ -138,9 +135,9 @@ export function applyTaskDumpAssignmentToDay(
     ([groupKey, assignments]) => {
       const [taskName, projectId] = groupKey.split("\u0000") as [
         string,
-        GlobalProjectId,
+        string,
       ];
-      const project = projectById.get(projectId) ?? projectById.get("academic");
+      const project = projectById.get(projectId);
       const assignedMinutes = assignments
         .sort((first, second) => first.blockIndex - second.blockIndex)
         .flatMap((item) => {
@@ -208,64 +205,21 @@ function normalizeAssignment(raw: unknown): TaskDumpAssignment {
   };
 }
 
-function requireNormalizedProjectId(
+function requireValidProjectId(
   item: TaskDumpAssignment["assignments"][number],
-): GlobalProjectId {
+  projectIds: Set<string>,
+): string {
   if (typeof item.projectId === "string" && item.projectId.trim()) {
-    const normalizedProjectId = item.projectId.trim();
+    const projectId = item.projectId.trim();
 
-    if (isGlobalProjectId(normalizedProjectId)) {
-      return normalizedProjectId;
+    if (projectIds.has(projectId)) {
+      return projectId;
     }
 
     throw new Error(`Invalid projectId: ${item.projectId}.`);
   }
 
-  if (typeof item.projectName === "string" && item.projectName.trim()) {
-    const normalizedProjectName = normalizeAssignmentProjectName(
-      item.projectName,
-    );
-
-    if (normalizedProjectName) {
-      return normalizedProjectName;
-    }
-
-    throw new Error(
-      "Unknown project category. Use academic, professional, or personal.",
-    );
-  }
-
   throw new Error(`Missing projectId for block ${item.blockIndex}.`);
-}
-
-function normalizeAssignmentProjectName(
-  projectName: string,
-): GlobalProjectId | null {
-  const normalizedName = slugify(projectName);
-
-  if (
-    normalizedName === "academic" ||
-    normalizedName === "school" ||
-    normalizedName === "academic-school" ||
-    normalizedName === "school-academic"
-  ) {
-    return "academic";
-  }
-
-  if (
-    normalizedName === "professional" ||
-    normalizedName === "work" ||
-    normalizedName === "professional-work" ||
-    normalizedName === "work-professional"
-  ) {
-    return "professional";
-  }
-
-  if (normalizedName === "personal") {
-    return "personal";
-  }
-
-  return null;
 }
 
 function validateAssignmentTimes(
@@ -418,7 +372,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 function createTaskDumpScheduledTaskId(
   taskName: string,
-  projectId: GlobalProjectId,
+  projectId: string,
 ): string {
   const slug = slugify(taskName).slice(0, 32);
 

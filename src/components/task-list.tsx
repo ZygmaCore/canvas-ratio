@@ -55,7 +55,7 @@ export function TaskList({
           <p className="mt-1 text-sm font-bold">
             {compact
               ? "Click colored canvas cells to clear them."
-              : "Tasks color project cells and stay assigned under unavailable time."}
+              : "Tasks color project cells and stay assigned under black time."}
           </p>
         </div>
         <span className="border-2 border-[#1A1A1A] bg-[#FFD91A] px-3 py-1 text-sm font-black">
@@ -168,7 +168,7 @@ function TaskCard({
 
           {coveredCells > 0 ? (
             <InlineMessage type="warning" className="animate-attention-once mt-3">
-              Partially covered by unavailable time. {coveredCells} cell
+              Partially covered by black time. {coveredCells} cell
               {coveredCells === 1 ? "" : "s"} hidden.
             </InlineMessage>
           ) : null}

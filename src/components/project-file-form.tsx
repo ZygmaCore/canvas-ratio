@@ -7,6 +7,7 @@ import {
   type ProjectFile,
   type ProjectFileInput,
 } from "@/lib/project-files";
+import { getTodayDateKey } from "@/lib/time";
 
 type ProjectFileFormProps = {
   defaultTodayDate: string;
@@ -18,11 +19,10 @@ export function ProjectFileForm({
   onCreateProjectFile,
 }: ProjectFileFormProps) {
   const [projectName, setProjectName] = useState("");
-  const [unitName, setUnitName] = useState("videos");
-  const [totalTarget, setTotalTarget] = useState("200");
-  const [todayDate, setTodayDate] = useState(defaultTodayDate);
+  const [unitName, setUnitName] = useState("tasks");
+  const [totalTarget, setTotalTarget] = useState("10");
   const [targetDate, setTargetDate] = useState(
-    getDateAfterDays(defaultTodayDate, 50),
+    getDateAfterDays(defaultTodayDate, 14),
   );
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
@@ -32,21 +32,21 @@ export function ProjectFileForm({
     setError("");
 
     try {
+      const currentDate = getTodayDateKey();
       const input: ProjectFileInput = {
         projectName,
         unitName,
         totalTarget: Number(totalTarget),
-        todayDate,
+        todayDate: currentDate,
         targetDate,
         notes,
       };
 
       onCreateProjectFile(createProjectFile(input));
       setProjectName("");
-      setUnitName("videos");
-      setTotalTarget("200");
-      setTodayDate(defaultTodayDate);
-      setTargetDate(getDateAfterDays(defaultTodayDate, 50));
+      setUnitName("tasks");
+      setTotalTarget("10");
+      setTargetDate(getDateAfterDays(currentDate, 14));
       setNotes("");
     } catch (submitError) {
       setError(
@@ -79,13 +79,13 @@ export function ProjectFileForm({
           label="Project name"
           value={projectName}
           onChange={setProjectName}
-          placeholder="Finish C Course"
+          placeholder="Project name"
         />
         <TextInput
           label="Unit name"
           value={unitName}
           onChange={setUnitName}
-          placeholder="videos"
+          placeholder="tasks"
         />
         <label className="block">
           <span className="text-sm font-black uppercase text-[#2F5FBF]">
@@ -101,17 +101,6 @@ export function ProjectFileForm({
           />
         </label>
         <label className="block">
-          <span className="text-sm font-black uppercase text-[#2F5FBF]">
-            Today date
-          </span>
-          <input
-            type="date"
-            value={todayDate}
-            onChange={(event) => setTodayDate(event.currentTarget.value)}
-            className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-white px-3 py-2 text-base font-bold transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]"
-          />
-        </label>
-        <label className="block md:col-span-2">
           <span className="text-sm font-black uppercase text-[#2F5FBF]">
             Target date
           </span>
@@ -181,8 +170,9 @@ function TextInput({
 }
 
 function getDateAfterDays(dateKey: string, days: number): string {
-  const date = new Date(`${dateKey}T00:00:00`);
-  date.setDate(date.getDate() + days - 1);
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() + days - 1);
 
   return date.toISOString().slice(0, 10);
 }

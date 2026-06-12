@@ -43,7 +43,7 @@ export function PasteTaskDumpAssignment({
       const planningData = buildTaskDumpPlanningData(day, settings);
 
       validateTaskDumpAssignment(assignment, planningData);
-      onSaveDay(applyTaskDumpAssignmentToDay(day, assignment));
+      onSaveDay(applyTaskDumpAssignmentToDay(day, assignment, planningData));
       setAssignmentText("");
       setStatus({
         type: "success",

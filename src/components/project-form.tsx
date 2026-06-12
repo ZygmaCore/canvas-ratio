@@ -2,51 +2,131 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { InlineMessage } from "@/components/inline-message";
+import { PROJECT_COLORS } from "@/lib/palette";
 import { getProjectRatioTotal } from "@/lib/projects";
+import { createProjectSetting, getActiveProjects } from "@/lib/settings";
 import type { ProjectRecord } from "@/types/canvas";
 
 type ProjectRatioFormProps = {
   projects: ProjectRecord[];
   disabled?: boolean;
-  onUpdateRatios: (ratios: Record<string, number>) => void;
+  usedProjectIds?: Set<string>;
+  onSaveProjects: (projects: ProjectRecord[]) => void;
+};
+
+type DraftProject = ProjectRecord & {
+  draftKey: string;
 };
 
 export function ProjectRatioForm({
   projects,
   disabled = false,
-  onUpdateRatios,
+  usedProjectIds = new Set(),
+  onSaveProjects,
 }: ProjectRatioFormProps) {
-  const [draftRatios, setDraftRatios] = useState<Record<string, string>>({});
-  const parsedRatios = useMemo(
-    () =>
-      Object.fromEntries(
-        projects.map((project) => [
-          project.id,
-          Number(draftRatios[project.id] ?? project.ratio),
-        ]),
-      ),
-    [draftRatios, projects],
+  const [draftProjects, setDraftProjects] = useState<DraftProject[]>([]);
+  const activeDraftProjects = useMemo(
+    () => getActiveProjects(draftProjects),
+    [draftProjects],
   );
-  const totalRatio = projects.reduce(
-    (total, project) => total + (parsedRatios[project.id] || 0),
-    0,
-  );
-  const savedTotalRatio = getProjectRatioTotal(projects);
-  const ratiosAreWholeNumbers = projects.every((project) =>
-    Number.isInteger(parsedRatios[project.id]),
+  const totalRatio = getProjectRatioTotal(draftProjects);
+  const ratiosAreWholeNumbers = draftProjects.every((project) =>
+    Number.isInteger(project.ratio),
   );
 
   useEffect(() => {
-    setDraftRatios(
-      Object.fromEntries(
-        projects.map((project) => [project.id, String(project.ratio)]),
-      ),
+    setDraftProjects(
+      projects.map((project) => ({
+        ...project,
+        draftKey: project.id,
+      })),
     );
   }, [projects]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onUpdateRatios(parsedRatios);
+
+    if (disabled) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+
+    onSaveProjects(
+      draftProjects
+        .map(({ draftKey: _draftKey, ...project }, index) => ({
+          ...project,
+          name: project.name.trim() || "Untitled Project",
+          ratio: normalizeDraftRatio(project.ratio),
+          order: index,
+          updatedAt: now,
+        }))
+        .sort((first, second) => first.order - second.order),
+    );
+  }
+
+  function addProject() {
+    const project = createProjectSetting(
+      {
+        name: "New Project",
+        ratio: 0,
+        color:
+          PROJECT_COLORS.find(
+            (color) =>
+              !draftProjects.some(
+                (projectItem) =>
+                  projectItem.color.toLowerCase() === color.hex.toLowerCase(),
+              ),
+          )?.hex ?? PROJECT_COLORS[0].hex,
+      },
+      draftProjects,
+    );
+
+    setDraftProjects((currentProjects) => [
+      ...currentProjects,
+      {
+        ...project,
+        draftKey: project.id,
+      },
+    ]);
+  }
+
+  function updateProject(projectId: string, update: Partial<ProjectRecord>) {
+    setDraftProjects((currentProjects) =>
+      currentProjects.map((project) =>
+        project.id === projectId ? { ...project, ...update } : project,
+      ),
+    );
+  }
+
+  function moveProject(projectId: string, direction: -1 | 1) {
+    setDraftProjects((currentProjects) => {
+      const nextProjects = [...currentProjects];
+      const index = nextProjects.findIndex((project) => project.id === projectId);
+      const nextIndex = index + direction;
+
+      if (index < 0 || nextIndex < 0 || nextIndex >= nextProjects.length) {
+        return currentProjects;
+      }
+
+      [nextProjects[index], nextProjects[nextIndex]] = [
+        nextProjects[nextIndex],
+        nextProjects[index],
+      ];
+
+      return nextProjects.map((project, order) => ({ ...project, order }));
+    });
+  }
+
+  function removeOrArchiveProject(projectId: string) {
+    if (usedProjectIds.has(projectId)) {
+      updateProject(projectId, { archived: true });
+      return;
+    }
+
+    setDraftProjects((currentProjects) =>
+      currentProjects.filter((project) => project.id !== projectId),
+    );
   }
 
   return (
@@ -57,86 +137,188 @@ export function ProjectRatioForm({
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-2xl font-black">Set your daily ratios</h2>
+          <h2 className="text-2xl font-black">Projects</h2>
           <p className="mt-1 text-sm font-bold">
-            School, Work, and Personal stay fixed.
+            Ratios are recommendations, not limits.
           </p>
         </div>
         <span
           className={`border-2 border-[#1A1A1A] px-3 py-1 text-sm font-black ${
-            savedTotalRatio === 100 ? "bg-[#8BCF3F]" : "bg-[#FFD7BF]"
+            totalRatio === 100 ? "bg-[#8BCF3F]" : "bg-[#FFD7BF]"
           }`}
         >
-          Saved: {savedTotalRatio}/100
+          Active: {totalRatio}/100
         </span>
       </div>
 
-      <div className="mt-4 grid gap-3">
-        {projects.map((project) => (
-          <label
-            key={project.id}
-            className="project-card grid gap-3 border-2 border-[#1A1A1A] bg-[#FBFBF7] p-4 sm:grid-cols-[minmax(0,1fr)_120px] sm:items-center"
-          >
-            <span className="flex min-w-0 items-center gap-3">
-              <span
-                className="project-color-dot h-6 w-6 shrink-0 rounded-full border-2 border-[#1A1A1A]"
-                style={{ backgroundColor: project.color }}
-                aria-hidden="true"
-              />
-              <span className="min-w-0">
-                <span className="block break-words text-base font-black">
-                  {project.name}
-                </span>
-                <span className="block text-xs font-black uppercase text-[#2F5FBF]">
-                  {project.id}
-                </span>
-              </span>
-            </span>
-            <span className="block">
-              <span className="sr-only">{project.name} ratio</span>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                step="1"
-                value={draftRatios[project.id] ?? String(project.ratio)}
-                disabled={disabled}
-                data-testid={`project-ratio-${project.id}`}
-                onChange={(event) =>
-                  setDraftRatios((currentRatios) => ({
-                    ...currentRatios,
-                    [project.id]: event.currentTarget.value,
-                  }))
-                }
-                onInput={(event) =>
-                  setDraftRatios((currentRatios) => ({
-                    ...currentRatios,
-                    [project.id]: event.currentTarget.value,
-                  }))
-                }
-                className="min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:bg-[#FFD7BF]"
-              />
-            </span>
-          </label>
-        ))}
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={addProject}
+          className="min-h-10 border-2 border-[#1A1A1A] bg-[#FFD91A] px-3 py-2 text-sm font-black shadow-[3px_3px_0_#1A1A1A] disabled:cursor-not-allowed disabled:bg-gray-200 disabled:shadow-none"
+        >
+          Add Project
+        </button>
+        <button
+          type="submit"
+          disabled={disabled}
+          data-testid="save-project-ratios"
+          className="min-h-10 border-2 border-[#1A1A1A] bg-[#2F5FBF] px-3 py-2 text-sm font-black text-white shadow-[3px_3px_0_#FFD91A] disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-[#4a4a4a] disabled:shadow-none"
+        >
+          Save Projects
+        </button>
       </div>
 
-      {totalRatio !== 100 || !ratiosAreWholeNumbers ? (
+      {activeDraftProjects.length === 0 ? (
         <InlineMessage type="warning" className="mt-3">
-          Ratios should be whole numbers and total 100 for balanced
-          recommendations. Draft total:{" "}
-          {Number.isFinite(totalRatio) ? totalRatio : 0}/100.
+          Create your first project to start painting.
         </InlineMessage>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={disabled}
-        data-testid="save-project-ratios"
-        className="mt-4 min-h-11 border-2 border-[#1A1A1A] bg-[#2F5FBF] px-4 py-2 text-sm font-black text-[#FFFFFF] shadow-[3px_3px_0_#FFD91A] transition hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#FFD91A] focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:cursor-not-allowed disabled:bg-[#8B4A3A]"
-      >
-        Save Ratios
-      </button>
+      {totalRatio !== 100 || !ratiosAreWholeNumbers ? (
+        <InlineMessage type="warning" className="mt-3">
+          Ratios should total 100% for clean recommendations. Current active
+          total: {Number.isFinite(totalRatio) ? totalRatio : 0}/100.
+          Recommendations are normalized.
+        </InlineMessage>
+      ) : null}
+
+      <div className="mt-4 grid gap-3">
+        {draftProjects.map((project, index) => {
+          const archived = project.archived === true;
+          const used = usedProjectIds.has(project.id);
+
+          return (
+            <article
+              key={project.draftKey}
+              className={`border-2 border-[#1A1A1A] p-4 ${
+                archived ? "bg-[#EFEDE4] opacity-80" : "bg-[#FBFBF7]"
+              }`}
+            >
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_96px]">
+                <label className="block">
+                  <span className="text-xs font-black uppercase text-[#2F5FBF]">
+                    Project
+                  </span>
+                  <input
+                    value={project.name}
+                    disabled={disabled}
+                    onChange={(event) =>
+                      updateProject(project.id, {
+                        name: event.currentTarget.value,
+                      })
+                    }
+                    className="mt-1 min-h-10 w-full border-2 border-[#1A1A1A] bg-white px-3 py-2 text-sm font-bold focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:bg-gray-100"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-xs font-black uppercase text-[#2F5FBF]">
+                    Ratio
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={project.ratio}
+                    disabled={disabled || archived}
+                    onChange={(event) =>
+                      updateProject(project.id, {
+                        ratio: Number(event.currentTarget.value),
+                      })
+                    }
+                    className="mt-1 min-h-10 w-full border-2 border-[#1A1A1A] bg-white px-3 py-2 text-sm font-bold focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:bg-gray-100"
+                  />
+                </label>
+              </div>
+
+              <div className="mt-3">
+                <p className="text-xs font-black uppercase text-[#2F5FBF]">
+                  Color
+                </p>
+                <div className="mt-2 grid grid-cols-5 gap-2 sm:grid-cols-10">
+                  {PROJECT_COLORS.map((color) => {
+                    const selected =
+                      color.hex.toLowerCase() === project.color.toLowerCase();
+
+                    return (
+                      <button
+                        key={color.hex}
+                        type="button"
+                        disabled={disabled || archived}
+                        onClick={() =>
+                          updateProject(project.id, { color: color.hex })
+                        }
+                        aria-label={`${project.name} color ${color.name}`}
+                        className={`aspect-square min-h-8 border-2 border-[#1A1A1A] focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:cursor-not-allowed ${
+                          selected
+                            ? "shadow-[3px_3px_0_#1A1A1A] ring-4 ring-[#FFD91A]"
+                            : ""
+                        }`}
+                        style={{ backgroundColor: color.hex }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={disabled || index === 0}
+                  onClick={() => moveProject(project.id, -1)}
+                  className="min-h-10 border-2 border-[#1A1A1A] bg-white px-3 py-2 text-sm font-black disabled:cursor-not-allowed disabled:bg-gray-200"
+                >
+                  Up
+                </button>
+                <button
+                  type="button"
+                  disabled={disabled || index === draftProjects.length - 1}
+                  onClick={() => moveProject(project.id, 1)}
+                  className="min-h-10 border-2 border-[#1A1A1A] bg-white px-3 py-2 text-sm font-black disabled:cursor-not-allowed disabled:bg-gray-200"
+                >
+                  Down
+                </button>
+                {archived ? (
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() =>
+                      updateProject(project.id, { archived: false })
+                    }
+                    className="min-h-10 border-2 border-[#1A1A1A] bg-[#8BCF3F] px-3 py-2 text-sm font-black disabled:cursor-not-allowed disabled:bg-gray-200"
+                  >
+                    Restore
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => removeOrArchiveProject(project.id)}
+                    className="min-h-10 border-2 border-[#1A1A1A] bg-[#D62828] px-3 py-2 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-[#4a4a4a]"
+                  >
+                    {used ? "Archive" : "Delete"}
+                  </button>
+                )}
+                {archived ? (
+                  <span className="min-h-10 border-2 border-[#1A1A1A] bg-white px-3 py-2 text-sm font-black">
+                    Archived
+                  </span>
+                ) : null}
+              </div>
+            </article>
+          );
+        })}
+      </div>
     </form>
   );
+}
+
+function normalizeDraftRatio(ratio: number): number {
+  if (!Number.isFinite(ratio)) {
+    return 0;
+  }
+
+  return Math.min(100, Math.max(0, Math.round(ratio)));
 }

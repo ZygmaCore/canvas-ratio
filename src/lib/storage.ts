@@ -7,8 +7,9 @@ import {
 import { createMigratedProjectId, validateProjectColor } from "@/lib/projects";
 import { rebuildDaySlots } from "@/lib/rebuild";
 import {
-  getDefaultSettings,
+  getGlobalProjects,
   normalizeGlobalProjectId,
+  normalizeLegacyProjectName,
 } from "@/lib/settings";
 import { normalizeTaskDumpItems } from "@/lib/task-dump";
 import { createEmptySlots, MINUTES_PER_DAY } from "@/lib/time";
@@ -248,7 +249,7 @@ function migrateProjectsAndTasks({
   const projects = assignUniqueProjectColors(
     rawProjects
       .filter(isPlainObject)
-      .map((project) => normalizeStoredProject(project, createdAt))
+      .map((project, index) => normalizeStoredProject(project, createdAt, index))
       .filter((project): project is ProjectRecord => !!project),
   );
   const migratedProjectMap = new Map<string, ProjectRecord>();
@@ -277,6 +278,7 @@ function migrateProjectsAndTasks({
 function normalizeStoredProject(
   project: Record<string, unknown>,
   fallbackCreatedAt: string,
+  index = 0,
 ): ProjectRecord | null {
   const name = (
     normalizeOptionalString(project.name) ??
@@ -297,8 +299,14 @@ function normalizeStoredProject(
     name,
     color,
     ratio: normalizeProjectRatio(project.ratio),
+    order: normalizeProjectOrder(project.order, index),
     description: normalizeOptionalString(project.description)?.trim() || undefined,
     createdAt: normalizeOptionalString(project.createdAt) ?? fallbackCreatedAt,
+    updatedAt:
+      normalizeOptionalString(project.updatedAt) ??
+      normalizeOptionalString(project.createdAt) ??
+      fallbackCreatedAt,
+    archived: project.archived === true,
   };
 }
 
@@ -336,6 +344,7 @@ function normalizeStoredTask(
   const project = getGlobalProjectForStoredTask({
     projectId,
     projectName,
+    projectColor: task.color,
     existingProject,
   });
 
@@ -367,34 +376,71 @@ function normalizeStoredTask(
 function getGlobalProjectForStoredTask({
   projectId,
   projectName,
+  projectColor,
   existingProject,
 }: {
   projectId?: string;
   projectName?: string;
+  projectColor?: unknown;
   existingProject?: ProjectRecord;
 }): ProjectRecord {
-  const projects = getDefaultSettings().projects;
-  const normalizedProjectId =
-    normalizeGlobalProjectId(projectId, projectName) ??
-    normalizeGlobalProjectId(existingProject?.id, existingProject?.name);
+  const now = new Date().toISOString();
+  const projects = getGlobalProjects();
+  const normalizedProjectId = normalizeGlobalProjectId(projectId, projectName);
+  const legacyProjectId =
+    normalizeLegacyProjectName(projectId) ??
+    normalizeLegacyProjectName(projectName) ??
+    normalizeLegacyProjectName(existingProject?.id) ??
+    normalizeLegacyProjectName(existingProject?.name);
 
   const project =
     projects.find((candidate) => candidate.id === normalizedProjectId) ??
-    projects[0];
-
-  if (!normalizedProjectId && (projectId || projectName || existingProject)) {
-    console.warn(
-      "Canvas Ratio mapped an unknown legacy project to School.",
-      {
-        projectId,
-        projectName,
-        existingProjectId: existingProject?.id,
-        existingProjectName: existingProject?.name,
-      },
+    projects.find((candidate) => candidate.id === legacyProjectId) ??
+    projects.find(
+      (candidate) =>
+        !!projectName &&
+        candidate.name.toLowerCase() === projectName.toLowerCase(),
     );
+
+  if (project) {
+    return project;
   }
 
-  return project;
+  if (existingProject) {
+    return {
+      ...existingProject,
+      order: existingProject.order ?? projects.length,
+      createdAt: existingProject.createdAt ?? now,
+      updatedAt: existingProject.updatedAt ?? now,
+    };
+  }
+
+  if (projectId || projectName) {
+    return {
+      id: normalizedProjectId ?? legacyProjectId ?? createMigratedProjectId(
+        projectName ?? projectId ?? "Untitled Project",
+        validateStoredProjectColor(projectColor),
+      ),
+      name: projectName ?? projectId ?? "Untitled Project",
+      color: validateStoredProjectColor(projectColor),
+      ratio: 0,
+      order: projects.length,
+      archived: true,
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+
+  return {
+    id: "legacy-untitled-project",
+    name: "Untitled Project",
+    color: validateStoredProjectColor(projectColor),
+    ratio: 1,
+    order: projects.length,
+    archived: true,
+    createdAt: now,
+    updatedAt: now,
+  };
 }
 
 function normalizeStoredBlocks(
@@ -573,6 +619,14 @@ function normalizeProjectRatio(ratio: unknown): number {
   }
 
   return Math.min(100, Math.max(1, Math.round(ratio)));
+}
+
+function normalizeProjectOrder(order: unknown, fallbackOrder: number): number {
+  if (typeof order !== "number" || !Number.isFinite(order)) {
+    return fallbackOrder;
+  }
+
+  return Math.round(order);
 }
 
 function normalizeOptionalRatio(ratio: unknown): number | undefined {

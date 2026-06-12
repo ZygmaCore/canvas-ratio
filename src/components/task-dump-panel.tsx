@@ -6,7 +6,7 @@ import { InlineMessage } from "@/components/inline-message";
 import { PasteTaskDumpAssignment } from "@/components/paste-task-dump-assignment";
 import { TaskDumpItemCard } from "@/components/task-dump-item-card";
 import type { DayStatus } from "@/lib/day";
-import type { CanvasSettings } from "@/lib/settings";
+import { getActiveProjects, type CanvasSettings } from "@/lib/settings";
 import {
   addTaskDumpItem,
   clearTaskDump,
@@ -39,6 +39,7 @@ export function TaskDumpPanel({
   const [note, setNote] = useState("");
   const [blockCount, setBlockCount] = useState("1");
   const [error, setError] = useState("");
+  const activeProjectCount = getActiveProjects(settings.projects).length;
   const editingItem =
     editingItemId ? items.find((item) => item.id === editingItemId) : null;
   const remainingCapacity = Math.max(0, summary.availableDumpBlocks);
@@ -55,6 +56,7 @@ export function TaskDumpPanel({
   const copyDisabled =
     !day ||
     status === "future" ||
+    activeProjectCount === 0 ||
     items.length === 0 ||
     summary.freeBlocks === 0 ||
     !summary.isValid;
@@ -62,6 +64,7 @@ export function TaskDumpPanel({
     !day ||
     !editable ||
     status === "future" ||
+    activeProjectCount === 0 ||
     items.length === 0 ||
     summary.freeBlocks === 0 ||
     !summary.isValid;
@@ -196,11 +199,11 @@ export function TaskDumpPanel({
             <input
               type="text"
               value={taskName}
-              disabled={formDisabled}
-              onChange={(event) => setTaskName(event.currentTarget.value)}
-              className="mt-1 min-h-11 w-full border-2 border-[#1A1A1A] bg-white px-3 py-2 text-base font-bold focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:bg-[#FFD7BF]"
-              placeholder="Study C pointers"
-            />
+            disabled={formDisabled}
+            onChange={(event) => setTaskName(event.currentTarget.value)}
+            className="mt-1 min-h-11 w-full border-2 border-[#1A1A1A] bg-white px-3 py-2 text-base font-bold focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:bg-[#FFD7BF]"
+            placeholder="Name the task"
+          />
           </label>
           <label className="block">
             <span className="text-xs font-black uppercase text-[#2F5FBF]">
@@ -277,6 +280,11 @@ export function TaskDumpPanel({
       ) : null}
 
       <div className="mt-4">
+        {activeProjectCount === 0 ? (
+          <InlineMessage type="warning" className="mb-3">
+            Create at least one project before planning remaining blocks.
+          </InlineMessage>
+        ) : null}
         <CopyTaskDumpPromptButton
           day={day}
           settings={settings}
@@ -285,6 +293,11 @@ export function TaskDumpPanel({
       </div>
 
       <div className="mt-4">
+        {activeProjectCount === 0 ? (
+          <InlineMessage type="warning" className="mb-3">
+            Create a project before applying an AI plan.
+          </InlineMessage>
+        ) : null}
         <PasteTaskDumpAssignment
           day={day}
           settings={settings}

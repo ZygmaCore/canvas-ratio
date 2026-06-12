@@ -1,15 +1,15 @@
 import { cellIndexToMinuteRange, getCellState } from "@/lib/cells";
-import { normalizeGlobalProjectId, type CanvasSettings } from "@/lib/settings";
+import { type CanvasSettings } from "@/lib/settings";
 import { minuteToTime } from "@/lib/time";
 import type { DayRecord, TaskRecord, TaskSource, TimeBlock } from "@/types/canvas";
 
-export type DailyReviewProjectId = "academic" | "professional" | "personal";
+export type DailyReviewProjectId = string;
 
 export type DailyReviewBlock = {
   index: number;
   startTime: string;
   endTime: string;
-  state: "free" | "unavailable" | "colored";
+  state: "free" | "black" | "colored";
   source?: TaskSource;
   projectId?: DailyReviewProjectId;
   projectName?: string;
@@ -32,11 +32,9 @@ export type DailyReviewData = {
   summary: {
     totalBlocks: 48;
     freeBlocks: number;
-    unavailableBlocks: number;
+    blackBlocks: number;
     coloredBlocks: number;
-    academicBlocks: number;
-    professionalBlocks: number;
-    personalBlocks: number;
+    projectBlocks: Record<string, number>;
   };
   blocks: DailyReviewBlock[];
   tasks: Array<{
@@ -64,22 +62,12 @@ export function buildDailyReviewData(
   day: DayRecord,
   settings: CanvasSettings,
 ): DailyReviewData {
-  const projects = settings.projects
-    .map((project) => {
-      const id = normalizeGlobalProjectId(project.id, project.name);
-
-      if (!id) {
-        return null;
-      }
-
-      return {
-        id,
-        name: project.name,
-        ratio: project.ratio,
-        color: project.color,
-      };
-    })
-    .filter((project): project is DailyReviewData["projects"][number] => !!project);
+  const projects = settings.projects.map((project) => ({
+    id: project.id,
+    name: project.name,
+    ratio: project.ratio,
+    color: project.color,
+  }));
   const projectById = new Map(projects.map((project) => [project.id, project]));
   const taskById = new Map(day.tasks.map((task) => [task.id, task]));
   const blocks = Array.from({ length: 48 }, (_, index) =>
@@ -88,16 +76,9 @@ export function buildDailyReviewData(
   const summary = {
     totalBlocks: 48 as const,
     freeBlocks: blocks.filter((block) => block.state === "free").length,
-    unavailableBlocks: blocks.filter((block) => block.state === "unavailable")
-      .length,
+    blackBlocks: blocks.filter((block) => block.state === "black").length,
     coloredBlocks: blocks.filter((block) => block.state === "colored").length,
-    academicBlocks: blocks.filter((block) => block.projectId === "academic")
-      .length,
-    professionalBlocks: blocks.filter(
-      (block) => block.projectId === "professional",
-    ).length,
-    personalBlocks: blocks.filter((block) => block.projectId === "personal")
-      .length,
+    projectBlocks: countBlocksByProject(blocks),
   };
 
   return {
@@ -118,8 +99,9 @@ export function buildDailyReviewPrompt(data: DailyReviewData): string {
 
 Canvas Ratio meaning:
 - White/free blocks are unused flexible time.
-- Black/unavailable blocks are sleep, random events, or time that could not be used.
-- Colored blocks are intentional work assigned to School, Work, or Personal.
+- Black blocks represent time that could not be used.
+- Colored blocks are intentional work assigned to user-defined projects.
+- Projects are user-defined. Do not assume fixed categories.
 - Some colored blocks may have source "task-dump".
 - Task Dump blocks were classified into projects by the external AI.
 - Review Task Dump blocks as part of their assigned project.
@@ -177,7 +159,7 @@ function buildDailyReviewBlock(
       index,
       startTime,
       endTime,
-      state: "unavailable",
+      state: "black",
       isBlack: true,
       color: "#1A1A1A",
     };
@@ -186,10 +168,10 @@ function buildDailyReviewBlock(
   const cell = getCellState(day.slots, index);
   const coloredSlot = cellSlots.find((slot) => slot.state === "colored");
   const task = coloredSlot?.taskId ? taskById.get(coloredSlot.taskId) : null;
-  const projectId = normalizeGlobalProjectId(task?.projectId, task?.projectName);
+  const projectId = task?.projectId;
   const project = projectId ? projectById.get(projectId) : undefined;
 
-  if (cell.state === "colored" && task && projectId && project) {
+  if (cell.state === "colored" && task && projectId) {
     return {
       index,
       startTime,
@@ -197,10 +179,10 @@ function buildDailyReviewBlock(
       state: "colored",
       source: task.source ?? "project-paint",
       projectId,
-      projectName: project.name,
+      projectName: project?.name ?? task.projectName ?? projectId,
       taskName: task.taskName,
       note: task.description,
-      color: project.color,
+      color: project?.color ?? task.color,
     };
   }
 
@@ -221,7 +203,6 @@ function buildDailyReviewTasks(
   return day.tasks
     .map((task) => {
       const projectId =
-        normalizeGlobalProjectId(task.projectId, task.projectName) ??
         task.projectId;
       const source = task.source ?? "project-paint";
       const blockIndexes = getTaskBlockIndexes(day, task, blocks);
@@ -244,6 +225,16 @@ function buildDailyReviewTasks(
       };
     })
     .filter((task) => task.totalBlocks > 0);
+}
+
+function countBlocksByProject(blocks: DailyReviewBlock[]): Record<string, number> {
+  return blocks.reduce<Record<string, number>>((counts, block) => {
+    if (block.state === "colored" && block.projectId) {
+      counts[block.projectId] = (counts[block.projectId] ?? 0) + 1;
+    }
+
+    return counts;
+  }, {});
 }
 
 function getTaskBlockIndexes(

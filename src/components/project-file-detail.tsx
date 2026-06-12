@@ -25,7 +25,6 @@ export function ProjectFileDetail({
   onUpdateProjectFile,
   onDeleteProjectFile,
 }: ProjectFileDetailProps) {
-  const [todayDate, setTodayDate] = useState(projectFile?.todayDate ?? "");
   const [targetDate, setTargetDate] = useState(projectFile?.targetDate ?? "");
   const [notes, setNotes] = useState(projectFile?.notes ?? "");
   const [saved, setSaved] = useState(false);
@@ -35,16 +34,10 @@ export function ProjectFileDetail({
   );
 
   useEffect(() => {
-    setTodayDate(projectFile?.todayDate ?? "");
     setTargetDate(projectFile?.targetDate ?? "");
     setNotes(projectFile?.notes ?? "");
     setSaved(false);
-  }, [
-    projectFile?.id,
-    projectFile?.todayDate,
-    projectFile?.targetDate,
-    projectFile?.notes,
-  ]);
+  }, [projectFile?.id, projectFile?.targetDate, projectFile?.notes]);
 
   if (!projectFile || !progress) {
     return (
@@ -78,7 +71,6 @@ export function ProjectFileDetail({
 
     onUpdateProjectFile({
       ...projectFile,
-      todayDate,
       targetDate,
       notes: notes.trim() || undefined,
     });
@@ -127,10 +119,19 @@ export function ProjectFileDetail({
           />
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <MetricCard
-            label="Completed"
-            value={`${progress.completed}/${projectFile.totalTarget}`}
+            label="Required today"
+            value={String(progress.requiredToday)}
+            detail={
+              progress.remaining === 0
+                ? "Completed."
+                : `Target ${progress.todayTargetBase}`
+            }
+          />
+          <MetricCard
+            label="Completed today"
+            value={String(progress.completedToday)}
             detail={projectFile.unitName}
           />
           <MetricCard
@@ -139,26 +140,30 @@ export function ProjectFileDetail({
             detail={projectFile.unitName}
           />
           <MetricCard
-            label="Required today"
-            value={String(progress.requiredToday)}
-            detail={`${progress.completedToday} completed today`}
-          />
-          <MetricCard
             label="Days left"
             value={String(progress.daysLeftInclusive)}
             detail={`Target ${projectFile.targetDate}`}
           />
+          <MetricCard
+            label="Progress"
+            value={`${progress.percentComplete}%`}
+            detail={`${progress.completed}/${projectFile.totalTarget}`}
+          />
         </div>
 
-        {progress.targetDatePassed ? (
+        {progress.remaining === 0 ? (
+          <InlineMessage type="info" className="mt-4">
+            Completed.
+          </InlineMessage>
+        ) : progress.targetDatePassed ? (
           <InlineMessage type="warning" className="mt-4">
             Target date has passed. Today’s required work uses 1 day so the
             number stays practical.
           </InlineMessage>
-        ) : progress.completedToday < progress.requiredToday ? (
+        ) : progress.requiredToday > 0 ? (
           <InlineMessage type="info" className="mt-4">
-            Do {progress.requiredToday - progress.completedToday} more{" "}
-            {projectFile.unitName} today to match this plan.
+            Do {progress.requiredToday} more {projectFile.unitName} today to
+            match this plan.
           </InlineMessage>
         ) : (
           <InlineMessage type="info" className="mt-4">
@@ -182,17 +187,6 @@ export function ProjectFileDetail({
             onSubmit={handleSavePlanning}
             className="grid gap-4 md:grid-cols-2"
           >
-            <label className="block">
-              <span className="text-sm font-black uppercase text-[#2F5FBF]">
-                Today date
-              </span>
-              <input
-                type="date"
-                value={todayDate}
-                onChange={(event) => setTodayDate(event.currentTarget.value)}
-                className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-white px-3 py-2 text-base font-bold transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]"
-              />
-            </label>
             <label className="block">
               <span className="text-sm font-black uppercase text-[#2F5FBF]">
                 Target date

@@ -1,20 +1,19 @@
 import { cellIndexToMinuteRange, CELLS_PER_DAY, getCellState } from "@/lib/cells";
-import { normalizeGlobalProjectId, type CanvasSettings } from "@/lib/settings";
+import {
+  getActiveProjects,
+  normalizeGlobalProjectId,
+  type CanvasSettings,
+} from "@/lib/settings";
 import { getTaskDumpItems, getTaskDumpSummary } from "@/lib/task-dump";
 import { MINUTES_PER_DAY, minuteToTime } from "@/lib/time";
 import type { DayRecord, TaskRecord } from "@/types/canvas";
-
-export type TaskDumpPlanningProjectId =
-  | "academic"
-  | "professional"
-  | "personal";
 
 export type TaskDumpPlanningBlock = {
   index: number;
   startTime: string;
   endTime: string;
-  state: "free" | "unavailable" | "colored";
-  projectId?: TaskDumpPlanningProjectId;
+  state: "free" | "black" | "colored";
+  projectId?: string;
   projectName?: string;
   taskName?: string;
   note?: string;
@@ -24,10 +23,16 @@ export type TaskDumpPlanningData = {
   date: string;
   totalBlocks: 48;
   freeBlockCount: number;
-  unavailableBlockCount: number;
+  blackBlockCount: number;
   coloredBlockCount: number;
   freeBlockIndexes: number[];
   canvasBlocks: TaskDumpPlanningBlock[];
+  projects: Array<{
+    id: string;
+    name: string;
+    ratio: number;
+    color: string;
+  }>;
   taskDump: Array<{
     id: string;
     taskName: string;
@@ -47,14 +52,14 @@ export function buildTaskDumpPlanningData(
   day: DayRecord,
   settings: CanvasSettings,
 ): TaskDumpPlanningData {
+  const projects = getActiveProjects(settings.projects).map((project) => ({
+    id: project.id,
+    name: project.name,
+    ratio: project.ratio,
+    color: project.color,
+  }));
   const projectById = new Map(
-    settings.projects
-      .map((project) => {
-        const id = normalizeGlobalProjectId(project.id, project.name);
-
-        return id ? [id, project.name] : null;
-      })
-      .filter((entry): entry is [TaskDumpPlanningProjectId, string] => !!entry),
+    settings.projects.map((project) => [project.id, project.name]),
   );
   const taskById = new Map(day.tasks.map((task) => [task.id, task]));
   const canvasBlocks = Array.from({ length: CELLS_PER_DAY }, (_, index) =>
@@ -75,13 +80,13 @@ export function buildTaskDumpPlanningData(
     date: day.date,
     totalBlocks: 48,
     freeBlockCount: freeBlockIndexes.length,
-    unavailableBlockCount: canvasBlocks.filter(
-      (block) => block.state === "unavailable",
-    ).length,
+    blackBlockCount: canvasBlocks.filter((block) => block.state === "black")
+      .length,
     coloredBlockCount: canvasBlocks.filter((block) => block.state === "colored")
       .length,
     freeBlockIndexes,
     canvasBlocks,
+    projects,
     taskDump,
     taskDumpSummary: {
       dumpedTaskCount: taskDump.length,
@@ -103,14 +108,14 @@ Canvas Ratio meaning:
 * A day has 48 blocks.
 * Each block is 30 minutes.
 * Free blocks are white cells that can still be planned.
-* Unavailable blocks are black cells and cannot be used.
+* Black blocks are black cells and cannot be used.
 * Colored blocks are already assigned and must not be changed.
 
 Your task:
 
 1. Use only the tasks from taskDump.
 2. Place those tasks only into freeBlockIndexes.
-3. Do not use unavailable blocks.
+3. Do not use black blocks.
 4. Do not modify colored blocks.
 5. Do not invent new tasks.
 6. Do not assign tasks outside the provided block counts.
@@ -119,24 +124,22 @@ Your task:
 9. If the task dump cannot fit, explain why.
 10. Return both a readable schedule and a JSON assignment.
 11. For every assigned block, classify it into projectId.
-12. projectId must be one of: academic, professional, personal.
-13. Use taskName and note to decide the project.
+12. projectId must be one of the ids from the projects array.
+13. Use taskName and note to choose the best project.
 14. Do not ask the user for project.
-15. Do not invent new project categories.
-16. School/study tasks should be academic.
-17. Work/coding/career tasks should be professional.
-18. Piano/health/rest/life tasks should be personal.
-19. The JSON assignment must be valid JSON.
-20. Do not wrap the JSON assignment in extra commentary inside the JSON block.
+15. Do not invent new project IDs.
+16. If unsure, choose the closest matching project from the projects array.
+17. The JSON assignment must be valid JSON.
+18. Do not wrap the JSON assignment in extra commentary inside the JSON block.
 
 Project classification:
 
-* academic: school, study, coursework, math, science, exam preparation, reading for learning
-* professional: work, coding, career, portfolio, project building, business, internship, job preparation
-* personal: piano, health, rest, chores, relationships, hobbies, recovery, personal life
+* The projects array contains the only available project IDs.
+* Choose projectId from the provided projects list.
+* Use each project name, taskName, note, and current canvas state as context.
 
-The user intentionally did not provide project labels. You must infer them from taskName and note.
-If unsure, choose the most likely project based on taskName and note. Do not invent a new project category.
+The user intentionally did not provide project labels in taskDump. You must infer them from taskName and note.
+If unsure, choose the closest matching project from the projects array.
 
 Output format:
 
@@ -152,9 +155,9 @@ JSON Assignment format:
 "blockIndex": 0,
 "startTime": "00:00",
 "endTime": "00:30",
-"taskName": "Example",
+"taskName": "Task name",
 "note": "Optional note",
-"projectId": "academic"
+"projectId": "existing-project-id"
 }
 ]
 }
@@ -162,10 +165,10 @@ JSON Assignment format:
 Important:
 
 * Base your answer only on the JSON.
-* Do not invent project categories.
+* Do not invent project IDs.
 * projectId is required for every assignment.
-* projectId must be academic, professional, or personal.
-* Do not alter existing colored or unavailable blocks.
+* projectId must exist in the projects array.
+* Do not alter existing colored or black blocks.
 * Only fill white/free blocks.
 * Each taskName must match a taskName from taskDump.
 * The total number of assigned blocks for each task must equal its blockCount.
@@ -181,7 +184,7 @@ function buildTaskDumpPlanningBlock(
   day: DayRecord,
   index: number,
   taskById: Map<string, TaskRecord>,
-  projectById: Map<TaskDumpPlanningProjectId, string>,
+  projectById: Map<string, string>,
 ): TaskDumpPlanningBlock {
   const { startMinute, endMinute } = cellIndexToMinuteRange(index);
   const cellSlots = day.slots.filter(
@@ -195,7 +198,7 @@ function buildTaskDumpPlanningBlock(
       index,
       startTime,
       endTime,
-      state: "unavailable",
+      state: "black",
     };
   }
 

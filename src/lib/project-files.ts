@@ -1,3 +1,5 @@
+import { getTodayDateKey } from "@/lib/time";
+
 export const PROJECT_FILES_STORAGE_KEY = "canvas-ratio:project-files:v1";
 
 export type ProjectFileBlock = {
@@ -30,11 +32,15 @@ export type ProjectFileInput = {
 };
 
 export type ProjectFileProgress = {
+  currentDate: string;
   completed: number;
+  completedBeforeToday: number;
   remaining: number;
+  remainingAtStartOfToday: number;
   percentComplete: number;
   daysLeftInclusive: number;
   targetDatePassed: boolean;
+  todayTargetBase: number;
   requiredToday: number;
   completedToday: number;
   todayRecommendedBlockIndexes: number[];
@@ -66,7 +72,7 @@ export function createProjectFile(input: ProjectFileInput): ProjectFile {
     projectName: normalizeRequiredText(input.projectName, "Project name"),
     unitName: normalizeRequiredText(input.unitName, "Unit name"),
     totalTarget,
-    todayDate: normalizeDateKey(input.todayDate, "Today date"),
+    todayDate: normalizeDateKey(input.todayDate, "Project date"),
     targetDate: normalizeDateKey(input.targetDate, "Target date"),
     notes: input.notes?.trim() || undefined,
     blocks: Array.from({ length: totalTarget }, (_, index) => ({
@@ -138,7 +144,7 @@ export function toggleProjectFileBlock(
   projectFile: ProjectFile,
   blockIndex: number,
 ): ProjectFile {
-  const todayDate = projectFile.todayDate;
+  const currentDate = getTodayDateKey();
 
   return {
     ...projectFile,
@@ -152,7 +158,7 @@ export function toggleProjectFileBlock(
       return {
         ...block,
         completed,
-        completedAt: completed ? todayDate : undefined,
+        completedAt: completed ? currentDate : undefined,
       };
     }),
     updatedAt: new Date().toISOString(),
@@ -162,32 +168,50 @@ export function toggleProjectFileBlock(
 export function calculateProjectFileProgress(
   projectFile: ProjectFile,
 ): ProjectFileProgress {
+  const currentDate = getTodayDateKey();
   const completed = projectFile.blocks.filter((block) => block.completed).length;
+  const completedBeforeToday = projectFile.blocks.filter(
+    (block) =>
+      block.completed && (!block.completedAt || block.completedAt < currentDate),
+  ).length;
+  const completedToday = projectFile.blocks.filter(
+    (block) => block.completed && block.completedAt === currentDate,
+  ).length;
   const remaining = Math.max(0, projectFile.totalTarget - completed);
+  const remainingAtStartOfToday = Math.max(
+    0,
+    projectFile.totalTarget - completedBeforeToday,
+  );
   const daysDifference = differenceInCalendarDays(
     projectFile.targetDate,
-    projectFile.todayDate,
+    currentDate,
   );
   const targetDatePassed = daysDifference < 0;
   const daysLeftInclusive = targetDatePassed ? 1 : Math.max(1, daysDifference + 1);
-  const requiredToday = remaining === 0 ? 0 : Math.ceil(remaining / daysLeftInclusive);
-  const completedToday = projectFile.blocks.filter(
-    (block) => block.completed && block.completedAt === projectFile.todayDate,
-  ).length;
+  const todayTargetBase =
+    remainingAtStartOfToday === 0
+      ? 0
+      : Math.ceil(remainingAtStartOfToday / daysLeftInclusive);
+  const requiredToday =
+    remaining === 0 ? 0 : Math.max(0, todayTargetBase - completedToday);
   const todayRecommendedBlockIndexes = projectFile.blocks
     .filter((block) => !block.completed)
     .slice(0, requiredToday)
     .map((block) => block.index);
 
   return {
+    currentDate,
     completed,
+    completedBeforeToday,
     remaining,
+    remainingAtStartOfToday,
     percentComplete:
       projectFile.totalTarget === 0
         ? 0
         : Math.round((completed / projectFile.totalTarget) * 1000) / 10,
     daysLeftInclusive,
     targetDatePassed,
+    todayTargetBase,
     requiredToday,
     completedToday,
     todayRecommendedBlockIndexes,
@@ -202,7 +226,7 @@ export function buildProjectFileReviewData(
     projectName: projectFile.projectName,
     unitName: projectFile.unitName,
     totalTarget: projectFile.totalTarget,
-    todayDate: projectFile.todayDate,
+    todayDate: getTodayDateKey(),
     targetDate: projectFile.targetDate,
     notes: projectFile.notes,
     ...calculateProjectFileProgress(projectFile),
@@ -293,10 +317,11 @@ export function buildProjectFileHtml(projectFile: ProjectFile): string {
       <h1>${escapeHtml(projectFile.projectName)}</h1>
       <p>${escapeHtml(projectFile.notes ?? "")}</p>
       <div class="summary">
-        <div class="metric">${progress.completed}/${projectFile.totalTarget} ${escapeHtml(projectFile.unitName)}</div>
-        <div class="metric">${progress.percentComplete}% complete</div>
-        <div class="metric">${progress.daysLeftInclusive} days left</div>
-        <div class="metric">${progress.requiredToday} ${escapeHtml(projectFile.unitName)} today</div>
+        <div class="metric">Progress: ${progress.percentComplete}%</div>
+        <div class="metric">Required today: ${progress.requiredToday} ${escapeHtml(projectFile.unitName)}</div>
+        <div class="metric">Completed today: ${progress.completedToday}</div>
+        <div class="metric">Remaining: ${progress.remaining}</div>
+        <div class="metric">Days left: ${progress.daysLeftInclusive}</div>
       </div>
       <div class="grid">${blocks}</div>
       <p>Generated ${escapeHtml(new Date().toISOString())}</p>
@@ -340,7 +365,7 @@ function normalizeProjectFile(raw: unknown): ProjectFile | null {
 
   const projectName = normalizeOptionalString(raw.projectName)?.trim();
   const unitName = normalizeOptionalString(raw.unitName)?.trim();
-  const todayDate = normalizeOptionalString(raw.todayDate);
+  const todayDate = normalizeOptionalString(raw.todayDate) ?? getTodayDateKey();
   const targetDate = normalizeOptionalString(raw.targetDate);
   let totalTarget: number | null = null;
 
@@ -356,7 +381,6 @@ function normalizeProjectFile(raw: unknown): ProjectFile | null {
     !projectName ||
     !unitName ||
     !totalTarget ||
-    !todayDate ||
     !targetDate ||
     !dateKeyPattern.test(todayDate) ||
     !dateKeyPattern.test(targetDate)

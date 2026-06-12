@@ -79,16 +79,24 @@ export function ProjectFileList({
 
               <div className="mt-3 grid gap-1 text-xs font-bold sm:grid-cols-2">
                 <p>
-                  Completed:{" "}
+                  Progress:{" "}
                   <span className="font-black">
                     {progress.completed}/{projectFile.totalTarget}
                   </span>
                 </p>
                 <p>
-                  Today:{" "}
+                  Required today:{" "}
                   <span className="font-black">
                     {progress.requiredToday} {projectFile.unitName}
                   </span>
+                </p>
+                <p>
+                  Completed today:{" "}
+                  <span className="font-black">{progress.completedToday}</span>
+                </p>
+                <p>
+                  Remaining:{" "}
+                  <span className="font-black">{progress.remaining}</span>
                 </p>
               </div>
             </button>

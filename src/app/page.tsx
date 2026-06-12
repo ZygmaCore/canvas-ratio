@@ -9,8 +9,8 @@ const productBasics = [
     color: WHITE_CANVAS.hex,
   },
   {
-    title: "Black = Unavailable Time",
-    body: "Sleep, events, and commitments stay clearly out of the planning pool.",
+    title: "Black = Blocked Time",
+    body: "Sleep, events, and commitments stay clearly outside the planning pool.",
     color: BLACK_CANVAS.hex,
   },
   {
@@ -21,7 +21,7 @@ const productBasics = [
 ];
 
 const steps = [
-  "Add unavailable time",
+  "Add black blocks",
   "Set ratio recommendations",
   "Paint your canvas",
   "Review your day or use Task Dump",
@@ -34,11 +34,11 @@ const features = [
   },
   {
     title: "Soft ratio recommendations",
-    body: "Keep your effort balanced without turning planning into accounting.",
+    body: "Create your own projects and set flexible balance targets.",
   },
   {
     title: "Task Dump prompt workflow",
-    body: "List leftover tasks, copy a prompt, and paste the result back when useful.",
+    body: "Dump tasks without choosing a project; let your AI classify them into existing projects.",
   },
   {
     title: "Project Files for long-term goals",
@@ -123,7 +123,7 @@ export default function LandingPage() {
             </h1>
             <p className="mt-6 max-w-2xl text-xl font-bold leading-8 text-[#3B3B35] sm:text-2xl sm:leading-9">
               A visual time architecture system for painting your day with free,
-              unavailable, and intentional blocks.
+              black, and intentional blocks.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Link

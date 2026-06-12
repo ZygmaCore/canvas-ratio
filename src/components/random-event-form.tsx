@@ -70,8 +70,8 @@ export function RandomEventForm({
     >
       <h2 className="text-2xl font-black">Random Event</h2>
       <p className="mt-2 text-sm font-bold">
-        Use this for sudden events, travel, hospital, errands, social events, or
-        anything that makes time unavailable.
+        Use this for sudden events or commitments that should become black
+        blocks.
       </p>
 
       <label className="mt-4 block">
@@ -85,7 +85,7 @@ export function RandomEventForm({
           data-testid="random-event-title"
           onChange={(event) => setTitle(event.currentTarget.value)}
           className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:bg-[#FFD7BF]"
-          placeholder="Errand, travel, appointment"
+          placeholder="Event title"
         />
       </label>
 

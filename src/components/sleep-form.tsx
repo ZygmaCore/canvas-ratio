@@ -56,7 +56,7 @@ export function SleepForm({ disabled = false, onAddSleep }: SleepFormProps) {
     >
       <h2 className="text-2xl font-black">Sleep</h2>
       <p className="mt-2 text-sm font-bold">
-        Sleep becomes unavailable time because it cannot be colored with tasks.
+        Sleep becomes black time because it cannot be colored with tasks.
       </p>
 
       <div className="mt-4">

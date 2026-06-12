@@ -4,7 +4,6 @@ import { useRef, useState, type ChangeEvent } from "react";
 import { InlineMessage } from "@/components/inline-message";
 import { getDayStatus } from "@/lib/day";
 import {
-  DAY_STORAGE_PREFIX,
   loadAllDayRecords,
   parseDayRecordForImport,
   saveDayRecord,
@@ -61,7 +60,7 @@ export function BackupPanel({
     if (days.length === 0) {
       setMessage({
         type: "warning",
-        text: "No Canvas Ratio day records were found in localStorage.",
+        text: "No saved Canvas Ratio day records were found.",
       });
       return;
     }
@@ -185,7 +184,7 @@ export function BackupPanel({
 
     if (status === "future") {
       return window.confirm(
-        `This record is for the future date ${importedDay.date}. It will be stored, but future canvases remain unavailable and not editable. Import it anyway?`,
+        `This record is for the future date ${importedDay.date}. It will be stored, but future canvases are not editable. Import it anyway?`,
       );
     }
 
@@ -200,11 +199,11 @@ export function BackupPanel({
         <div>
           <h2 className="text-2xl font-black">Backup & Settings</h2>
           <p className="mt-1 text-sm font-bold text-[#4a4a4a]">
-            Export and import localStorage records only.
+            Export or import your Canvas Ratio records.
           </p>
         </div>
         <span className="border-2 border-[#1A1A1A] bg-[#FFD91A] px-3 py-1 text-sm font-black">
-          {DAY_STORAGE_PREFIX}
+          Local backup
         </span>
       </div>
 

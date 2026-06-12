@@ -242,7 +242,7 @@ function ActiveTaskText({
   if (currentCell.state === "black") {
     return (
       <p className="mt-2 text-xl font-black">
-        Current active task: Unavailable time. / {currentCellLabel}
+        Current active task: Black time. / {currentCellLabel}
       </p>
     );
   }

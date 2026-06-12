@@ -29,8 +29,11 @@ export type ProjectRecord = {
   name: string;
   color: string;
   ratio: number;
+  order: number;
   description?: string;
   createdAt?: string;
+  updatedAt?: string;
+  archived?: boolean;
 };
 
 export type TaskInputMode = "manual-cell" | "ratio" | "time-range" | "duration";

@@ -196,7 +196,7 @@ export function TaskForm({
 
       {projects.length === 0 ? (
         <InlineMessage type="warning" className="mt-4">
-          Project settings are not available. Open the ratios panel.
+          Create a project before painting your canvas.
         </InlineMessage>
       ) : null}
 
@@ -231,7 +231,7 @@ export function TaskForm({
             data-testid="task-name"
             onChange={(event) => setTaskName(event.currentTarget.value)}
             className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-[#FFFFFF] px-3 py-2 text-base font-bold transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:bg-[#FFD7BF]"
-            placeholder="DSA, deep work, client call"
+            placeholder="Task name"
           />
         </label>
       </div>

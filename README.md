@@ -2,22 +2,22 @@
 
 A local-first visual time allocation app based on canvas, colors, and ratios.
 
-Canvas Ratio treats each day like a canvas. Free space is open time, unavailable space is blocked time, and colored space belongs to intentional work.
+Canvas Ratio treats each day like a canvas. White space is free time, black space is blocked time, and colored space belongs to intentional work.
 
-The root page explains the full flow: add unavailable time, set recommended ratios, paint the day, use Task Dump for remaining free blocks when useful, and copy Daily Review at the end of the day.
+The root page introduces the product, links to Canvas and Project Files, and keeps detailed usage notes out of the first view.
 
 ## Core Concept
 
 - White = free time.
-- Black = unavailable time.
-- Colors = the fixed global projects and their tasks.
-- Projects are global settings: School, Work, and Personal.
+- Black = blocked time that cannot be used.
+- Colors = user-defined projects and their tasks.
+- Projects are global settings that can be added, edited, reordered, colored, and archived.
 - Ratios apply only to the non-black canvas.
 - Each day has 48 visible cells.
 - Each cell is 30 minutes.
 - Internally, the app stores 1440 minute slots for accurate rebuilds.
 
-The default project ratios are School 50, Work 30, and Personal 20. Users adjust those global ratios as recommendations for a balanced day. Black cells are excluded first, then recommended project cells are calculated from the remaining paintable cells using largest-remainder rounding.
+Fresh installs start with no projects. Users create their own project list before painting the canvas. Black cells are excluded first, then recommended project cells are calculated from the remaining paintable cells using largest-remainder rounding. If active ratios do not total 100, recommendations are normalized internally.
 
 When a random event is added, its time range becomes black and colored task cells after the event end are cleared back to free time. Existing black blocks are preserved, and colored cells before the interruption still count against the recalculated recommendation.
 
@@ -26,7 +26,7 @@ When a random event is added, its time range becomes black and colored task cell
 - Date-based daily canvas.
 - Today is editable.
 - Past dates are read-only.
-- Future dates are unavailable.
+- Future dates are not editable.
 - A.M. and P.M. cell canvases.
 - Project ratios as soft recommendations.
 - Project/task separation.
@@ -48,30 +48,29 @@ Task Dump lives in the Canvas page side panel on desktop and the Dump tab on mob
 - It does not ask for a project.
 - One block equals one 30-minute free canvas cell.
 - Total dumped task blocks cannot exceed current white/free blocks.
-- If unavailable time changes and the dump exceeds current free blocks, the dump is preserved and copy/apply are disabled until the user reduces it or frees canvas blocks.
+- If black time changes and the dump exceeds current free blocks, the dump is preserved and copy/apply are disabled until the user reduces it or frees canvas blocks.
 - Copy Planning Prompt copies a compact 48-block JSON prompt to the clipboard.
-- The prompt can be pasted into ChatGPT, Gemini, Claude, or another external chatbot. The external AI infers `academic`, `professional`, or `personal` for each scheduled block from the task name and note.
+- The prompt can be pasted into ChatGPT, Gemini, Claude, or another external chatbot. The external AI chooses a `projectId` from the current active projects array.
 - Paste AI Result accepts pure JSON, markdown-wrapped JSON, or longer answers containing a JSON assignment.
 - Apply to Canvas validates the pasted assignment against the current free blocks before coloring anything.
-- Valid pasted assignments become project-colored Task Dump scheduled cells and count toward School, Work, or Personal recommendation usage.
+- Valid pasted assignments become project-colored Task Dump scheduled cells and count toward that project’s recommendation usage.
 - Canvas Ratio does not call an AI API.
 - No data leaves the browser unless the user pastes it somewhere else.
 
 ## Project Files
 
-Project Files live at `/project-files` and track long-term work as completion blocks. Each block is one unit, such as one video, lesson, chapter, or task.
+Project Files live at `/project-files` and track long-term work as completion blocks. Each block is one unit of progress.
 
 For every Project File, Canvas Ratio stores:
 
 - project name
 - unit name
 - total target
-- today date
 - target date
 - optional notes
 - completed/uncompleted blocks
 
-The app calculates days left inclusively, today’s required work, completed-today count, remaining units, and target-date-passed warnings in the browser. Project Files are local-first and stored in localStorage:
+The app calculates days left inclusively from the current local date, today’s required work, completed-today count, remaining units, and target-date-passed warnings in the browser. Project Files are local-first and stored in localStorage:
 
 ```text
 canvas-ratio:project-files:v1
@@ -107,7 +106,7 @@ Global project settings are stored separately:
 canvas-ratio:settings
 ```
 
-Day records no longer require per-day projects. Older records with embedded projects can still load, and legacy project names are normalized to the fixed global project IDs when possible.
+Day records no longer require per-day projects. Older records with embedded projects can still load, and legacy starter-project IDs are preserved when possible.
 
 Day records may also include:
 
@@ -125,7 +124,7 @@ Imports and exports are client-side only. No server upload, database, account, o
 
 ## Daily Review Prompt
 
-The Today’s Review button copies a Daily Review prompt to your clipboard. The prompt is built in the browser from the current day’s 48 half-hour blocks, project ratios, tasks, unavailable time, and Task Dump scheduled cells when they exist.
+The Today’s Review button copies a Daily Review prompt to your clipboard. The prompt is built in the browser from the current day’s 48 half-hour blocks, project ratios, tasks, black time, and Task Dump scheduled cells when they exist.
 
 No API call is made by Canvas Ratio when copying the prompt. You choose where to paste it, and the app keeps the review data local unless you send it somewhere yourself.
 

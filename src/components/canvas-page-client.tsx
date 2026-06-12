@@ -7,7 +7,6 @@ import { BlackBlockList } from "@/components/black-block-list";
 import { CanvasSummaryGrid } from "@/components/canvas-summary-grid";
 import { CellCanvas } from "@/components/cell-canvas";
 import { DailyReviewButton } from "@/components/daily-review-button";
-import { DayDebugPanel } from "@/components/day-debug-panel";
 import { DayStatusBadge } from "@/components/day-status-badge";
 import { InlineMessage } from "@/components/inline-message";
 import { PomodoroPanel } from "@/components/pomodoro-panel";
@@ -30,10 +29,12 @@ import {
 } from "@/lib/projects";
 import { rebuildDaySlots } from "@/lib/rebuild";
 import {
+  getActiveProjects,
   getDefaultSettings,
   loadSettings,
-  updateProjectRatios,
+  saveSettings,
 } from "@/lib/settings";
+import { loadAllDayRecords } from "@/lib/storage";
 import { createTaskRecord, type TaskRecordInput } from "@/lib/tasks";
 import { getTodayDateKey } from "@/lib/time";
 import { unpaintCell } from "@/lib/unpaint";
@@ -43,14 +44,14 @@ type CanvasPageClientProps = {
   initialDateKey: string;
 };
 
-type DrawerTab = "dump" | "projects" | "paint" | "unavailable" | "review";
+type DrawerTab = "dump" | "projects" | "paint" | "black" | "review";
 type MobileTab = "canvas" | "dump" | "paint" | "review";
 
 const drawerTabs: { id: DrawerTab; label: string }[] = [
   { id: "dump", label: "Dump" },
-  { id: "projects", label: "Ratios" },
+  { id: "projects", label: "Projects" },
   { id: "paint", label: "Paint" },
-  { id: "unavailable", label: "Unavailable" },
+  { id: "black", label: "Black" },
   { id: "review", label: "Review" },
 ];
 
@@ -69,15 +70,33 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
     useState<TaskInputMode>("manual-cell");
   const [cellError, setCellError] = useState("");
   const [activeDrawerTab, setActiveDrawerTab] =
-    useState<DrawerTab>("dump");
+    useState<DrawerTab>("paint");
   const [activeMobileTab, setActiveMobileTab] =
     useState<MobileTab>("canvas");
   const [settings, setSettings] = useState(() => getDefaultSettings());
   const [now, setNow] = useState<Date | null>(null);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
-  const { day, status, editable, loading, saveDay, resetDay, importDay } =
+  const { day, status, editable, saveDay, resetDay, importDay } =
     useDayRecord(selectedDateKey);
-  const projects = settings.projects;
+  const projects = useMemo(
+    () => getActiveProjects(settings.projects),
+    [settings.projects],
+  );
+  const usedProjectIds = useMemo(() => {
+    const ids = new Set<string>();
+
+    for (const savedDay of loadAllDayRecords()) {
+      for (const task of savedDay.tasks) {
+        ids.add(task.projectId);
+      }
+    }
+
+    for (const task of day?.tasks ?? []) {
+      ids.add(task.projectId);
+    }
+
+    return ids;
+  }, [day]);
 
   const slotSummaries = useMemo(() => {
     const slots = day?.slots ?? [];
@@ -165,13 +184,27 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
     setActiveMobileTab("paint");
   }
 
-  function handleUpdateProjectRatios(ratios: Record<string, number>) {
+  function handleSaveProjects(nextProjects: ProjectRecord[]) {
     if (!editable) {
       return;
     }
 
-    const nextSettings = updateProjectRatios(ratios);
+    const nextSettings = saveSettings({
+      ...settings,
+      projects: nextProjects,
+      updatedAt: new Date().toISOString(),
+    });
+
     setSettings(nextSettings);
+    const activeProjects = getActiveProjects(nextSettings.projects);
+
+    if (
+      selectedProjectId &&
+      !activeProjects.some((project) => project.id === selectedProjectId)
+    ) {
+      setSelectedProjectId(activeProjects[0]?.id ?? "");
+    }
+
     setSelectedCellIndices([]);
     setCellError("");
   }
@@ -275,7 +308,7 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
     const cell = getCellState(day.slots, cellIndex);
 
     if (cell.state === "black") {
-      setCellError("Unavailable time cannot be painted.");
+      setCellError("Black blocks cannot be painted.");
       return;
     }
 
@@ -317,7 +350,7 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
     const cell = getCellState(day.slots, cellIndex);
 
     if (cell.state === "black") {
-      setCellError("Unavailable time cannot be painted.");
+      setCellError("Black blocks cannot be painted.");
       return;
     }
 
@@ -353,20 +386,13 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
           </InlineMessage>
         ) : null}
 
-        {hasProjects && !ratioValidation.valid ? (
-          <RatioIncompleteCallout
-            totalRatio={totalRatio}
-            onOpenProjects={openProjectsPanel}
-          />
-        ) : null}
-
         <section className="grid min-w-0 gap-4 xl:grid-cols-2">
           <CellCanvas
             mode="am"
             day={day}
             selectedProjectId={selectedProjectId}
             selectedCellIndices={selectedCellIndices}
-            editable={editable}
+            editable={editable && hasProjects}
             compact
             onToggleCell={handleToggleCell}
             onUnpaintCell={handleUnpaintCell}
@@ -376,7 +402,7 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
             day={day}
             selectedProjectId={selectedProjectId}
             selectedCellIndices={selectedCellIndices}
-            editable={editable}
+            editable={editable && hasProjects}
             compact
             onToggleCell={handleToggleCell}
             onUnpaintCell={handleUnpaintCell}
@@ -409,12 +435,6 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
             status={status}
             onSaveDay={saveDay}
           />
-          <DailyReviewButton
-            day={day}
-            settings={settings}
-            disabled={!day || status === "future"}
-          />
-          <PomodoroPanel day={day} readOnly={!editable} compact />
         </PanelStack>
       );
     }
@@ -423,27 +443,27 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
       return (
         <PanelStack>
           <PanelHeading
-            eyebrow="Step 1"
-            title="Daily Ratios"
-            description="Ratios are recommendations, not limits."
+            title="Projects"
+            description="Create your own projects and set soft ratio recommendations."
           />
           <ProjectList
             day={day}
-            projects={projects}
+            projects={settings.projects}
             editable={editable}
             selectedProjectId={selectedProjectId}
           />
           <RatioProgress totalRatio={totalRatio} />
-          {hasProjects && !ratioValidation.valid ? (
+          {hasProjects && ratioValidation.message ? (
             <InlineMessage type="warning">
-              Ratios need to total 100 for recommendations to add up cleanly.
-              You can still paint freely.
+              Ratios should total 100% for clean recommendations. The app
+              normalizes them automatically, and you can still paint freely.
             </InlineMessage>
           ) : null}
           {editable ? (
             <ProjectRatioForm
-              projects={projects}
-              onUpdateRatios={handleUpdateProjectRatios}
+              projects={settings.projects}
+              usedProjectIds={usedProjectIds}
+              onSaveProjects={handleSaveProjects}
             />
           ) : (
             <InlineMessage type="info">
@@ -458,26 +478,19 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
       return (
         <PanelStack>
           <PanelHeading
-            eyebrow="Step 3"
             title="Paint"
             description="Click white cells to paint. Click colored cells to clear them."
           />
           <InlineMessage type="info">
             Click white cells to paint. Click colored cells to clear them.
-            Black cells are unavailable.
+            Black blocks cannot be painted.
           </InlineMessage>
           {!hasProjects ? (
             <ActionCard
-              title="Project settings unavailable"
-              description="Open the ratios panel and reload the fixed project settings."
-              actionLabel="Open Ratios"
+              title="Create your first project to start painting."
+              description="Add one project, set a ratio, then choose it here."
+              actionLabel="Add Project"
               onAction={openProjectsPanel}
-            />
-          ) : null}
-          {hasProjects && !ratioValidation.valid ? (
-            <RatioIncompleteCallout
-              totalRatio={totalRatio}
-              onOpenProjects={openProjectsPanel}
             />
           ) : null}
           {editable && hasProjects ? (
@@ -514,13 +527,13 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
       );
     }
 
-    if (tab === "unavailable") {
+    if (tab === "black") {
       return (
         <PanelStack>
           <PanelHeading
             eyebrow="Time you cannot color"
-            title="Unavailable Time"
-            description="Sleep and unexpected events block cells without deleting tasks."
+            title="Black Blocks"
+            description="Sleep and unexpected events turn cells black without deleting tasks."
           />
           {editable ? (
             <div className="grid gap-4">
@@ -529,7 +542,7 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
             </div>
           ) : (
             <InlineMessage type="info">
-              This date is read-only. Unavailable time editing is disabled.
+              This date is read-only. Black block editing is disabled.
             </InlineMessage>
           )}
           <BlackBlockList
@@ -563,7 +576,7 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
             compact
           />
           {!isDesktop ? (
-            <MobileUnavailableDetails
+            <MobileBlackDetails
               editable={editable}
               day={day}
               onAddSleep={handleAddSleep}
@@ -577,14 +590,6 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
             day={day}
             onResetToday={handleResetToday}
             onImportDay={importDay}
-          />
-          <DayDebugPanel
-            dateKey={selectedDateKey}
-            day={day}
-            projects={projects}
-            status={status}
-            editable={editable}
-            loading={loading}
           />
         </PanelStack>
       );
@@ -653,7 +658,7 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
               tone="white"
             />
             <TopMetric
-              label="Unavailable"
+              label="Black"
               value={formatBlockCountLabel(
                 slotSummaries.fullDaySummary.blackMinutes,
               )}
@@ -694,7 +699,7 @@ export function CanvasPageClient({ initialDateKey }: CanvasPageClientProps) {
           aria-label="Canvas controls"
         >
           <nav
-            className="hidden grid-cols-5 border-b-2 border-[#1A1A1A] bg-white lg:grid"
+            className="hidden grid-cols-5 gap-2 border-b-2 border-[#1A1A1A] bg-[#FBFBF7] p-3 lg:grid"
             aria-label="Canvas control tabs"
           >
             {drawerTabs.map((tab) => (
@@ -777,34 +782,7 @@ function ActionCard({
   );
 }
 
-function RatioIncompleteCallout({
-  totalRatio,
-  onOpenProjects,
-}: {
-  totalRatio: number;
-  onOpenProjects: () => void;
-}) {
-  return (
-    <section className="animate-panel-enter rounded-lg border-2 border-[#1A1A1A] bg-[#FFD7BF] p-4 shadow-[4px_4px_0_#1A1A1A]">
-      <h3 className="text-lg font-black">
-        Your project ratios are not complete yet.
-      </h3>
-      <p className="mt-2 text-sm font-bold">
-        Current total: {totalRatio}/100. You can still paint freely while you
-        adjust them.
-      </p>
-      <button
-        type="button"
-        onClick={onOpenProjects}
-        className="mt-4 min-h-11 border-2 border-[#1A1A1A] bg-white px-4 py-2 text-sm font-black shadow-[3px_3px_0_#1A1A1A] focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]"
-      >
-        Go to Ratios
-      </button>
-    </section>
-  );
-}
-
-function MobileUnavailableDetails({
+function MobileBlackDetails({
   editable,
   day,
   onAddSleep,
@@ -829,7 +807,7 @@ function MobileUnavailableDetails({
   return (
     <details>
       <summary className="min-h-12 cursor-pointer border-2 border-[#1A1A1A] bg-white px-4 py-3 text-base font-black shadow-[4px_4px_0_#1A1A1A] focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]">
-        Unavailable Time
+        Black Blocks
       </summary>
       <div className="mt-4 grid gap-4">
         {editable ? (
@@ -839,7 +817,7 @@ function MobileUnavailableDetails({
           </>
         ) : (
           <InlineMessage type="info">
-            This date is read-only. Unavailable time editing is disabled.
+            This date is read-only. Black block editing is disabled.
           </InlineMessage>
         )}
         <BlackBlockList
@@ -907,14 +885,20 @@ function PanelHeading({
   title,
   description,
 }: {
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
   description: string;
 }) {
   return (
     <div className="rounded-lg border-2 border-[#1A1A1A] bg-white p-4 shadow-[4px_4px_0_#1A1A1A]">
-      <p className="text-xs font-black uppercase text-[#2F5FBF]">{eyebrow}</p>
-      <h2 className="mt-1 text-2xl font-black">{title}</h2>
+      {eyebrow ? (
+        <p className="text-xs font-black uppercase text-[#2F5FBF]">
+          {eyebrow}
+        </p>
+      ) : null}
+      <h2 className={eyebrow ? "mt-1 text-2xl font-black" : "text-2xl font-black"}>
+        {title}
+      </h2>
       <p className="mt-1 text-sm font-bold text-[#4a4a4a]">{description}</p>
     </div>
   );
@@ -934,8 +918,10 @@ function DrawerTabButton({
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`min-h-12 border-r-2 border-[#1A1A1A] px-2 py-3 text-sm font-black transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] last:border-r-0 ${
-        active ? "bg-[#FFD91A]" : "bg-white hover:bg-[#FBFBF7]"
+      className={`min-h-12 rounded-lg border-2 border-[#1A1A1A] px-3 py-2 text-sm font-black leading-tight transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] ${
+        active
+          ? "bg-[#FFD91A] shadow-[3px_3px_0_#1A1A1A]"
+          : "bg-white hover:bg-[#F7F8F3]"
       }`}
     >
       {label}
@@ -957,7 +943,7 @@ function MobileTabButton({
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`min-h-16 border-r-2 border-[#1A1A1A] px-2 py-2 text-sm font-black focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] last:border-r-0 ${
+      className={`min-h-16 border-r-2 border-[#1A1A1A] px-2 py-2 text-sm font-black leading-tight focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] last:border-r-0 ${
         active ? "bg-[#FFD91A]" : "bg-white"
       }`}
     >
@@ -997,6 +983,7 @@ function TopMetric({
 function RatioProgress({ totalRatio }: { totalRatio: number }) {
   const cappedRatio = Math.min(Math.max(totalRatio, 0), 100);
   const ready = totalRatio === 100;
+  const empty = totalRatio === 0;
 
   return (
     <section className="rounded-lg border-2 border-[#1A1A1A] bg-white p-4 shadow-[4px_4px_0_#1A1A1A]">
@@ -1012,7 +999,7 @@ function RatioProgress({ totalRatio }: { totalRatio: number }) {
             ready ? "bg-[#8BCF3F]" : "bg-[#FFD7BF]"
           }`}
         >
-          {ready ? "Ready" : "Needs 100"}
+          {ready ? "Clean" : empty ? "No ratios" : "Normalized"}
         </span>
       </div>
       <div className="mt-3 h-4 border-2 border-[#1A1A1A] bg-[#FBFBF7]">

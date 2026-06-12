@@ -47,7 +47,7 @@ export function ProjectFilesPageClient({
   }
 
   function handleDeleteProjectFile(projectFileId: string) {
-    if (!window.confirm("Delete this project file from localStorage?")) {
+    if (!window.confirm("Delete this project file?")) {
       return;
     }
 

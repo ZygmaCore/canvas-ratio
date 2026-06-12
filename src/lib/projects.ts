@@ -5,7 +5,9 @@ import {
 } from "@/lib/cells";
 import { PROJECT_COLORS } from "@/lib/palette";
 import {
+  getActiveProjects,
   getGlobalProjects,
+  normalizeLegacyProjectName,
   normalizeGlobalProjectId,
 } from "@/lib/settings";
 import type { DayRecord, ProjectRecord, TaskRecord } from "@/types/canvas";
@@ -60,7 +62,9 @@ export function createProjectRecord(input: ProjectRecordInput): ProjectRecord {
     color,
     ratio,
     description: input.description?.trim() || undefined,
+    order: 0,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
 }
 
@@ -106,7 +110,7 @@ export function validateProjectRatios(
 
   if (total !== 100) {
     return {
-      valid: false,
+      valid: true,
       total,
       message: "Project ratios should total 100 for balanced recommendations.",
     };
@@ -137,20 +141,26 @@ export function calculateProjectCellQuotas(
     paintableCells: paintableCellCount,
   };
   const totalRatio = getProjectRatioTotal(projects);
+  const ratioDenominator = totalRatio > 0 ? totalRatio : projects.length;
   const quotaInputs = projects.map((project, index) => {
-    const rawCells = (paintableCellCount * project.ratio) / 100;
+    const effectiveRatio =
+      totalRatio > 0 ? project.ratio : projects.length > 0 ? 1 : 0;
+    const rawCells =
+      ratioDenominator > 0
+        ? (paintableCellCount * effectiveRatio) / ratioDenominator
+        : 0;
     const floorCells = Math.floor(rawCells);
 
     return {
       project,
       index,
       rawCells,
-      quotaCells: totalRatio === 100 ? floorCells : 0,
+      quotaCells: floorCells,
       remainder: rawCells - floorCells,
     };
   });
 
-  if (totalRatio === 100 && paintableCellCount > 0) {
+  if (paintableCellCount > 0) {
     const floorTotal = quotaInputs.reduce(
       (totalCells, quotaInput) => totalCells + quotaInput.quotaCells,
       0,
@@ -206,6 +216,7 @@ export function calculateProjectQuotaState(
     getGlobalProjects(),
 ): ProjectUsage[] {
   const projects = Array.isArray(settings) ? settings : settings.projects;
+  const activeProjects = getActiveProjects(projects);
   const taskById = new Map(day.tasks.map((task) => [task.id, task]));
   const paintedCellsByProject = new Map<string, number>();
   const cellCounts = {
@@ -249,7 +260,7 @@ export function calculateProjectQuotaState(
   }
 
   return calculateProjectCellQuotas(
-    projects,
+    activeProjects,
     cellCounts.paintableCells,
     paintedCellsByProject,
     cellCounts.whiteCells,
@@ -281,8 +292,9 @@ export function getProjectById(
   const activeProject =
     projects.find((project) => project.id === projectId) ??
     projects.find(
-      (project) => project.id === normalizeGlobalProjectId(projectId),
-    );
+      (project) => project.name.toLowerCase() === projectId.toLowerCase(),
+    ) ??
+    projects.find((project) => project.id === normalizeLegacyProjectName(projectId));
 
   if (activeProject) {
     return activeProject;
@@ -344,14 +356,12 @@ export function getProjectTaskCount(
   day: DayRecord,
   projectId: string,
 ): number {
-  const normalizedProjectId = normalizeGlobalProjectId(projectId) ?? projectId;
-
   return day.tasks.filter((task) => {
     const taskProjectId =
       normalizeGlobalProjectId(task.projectId, task.projectName) ??
       task.projectId;
 
-    return taskProjectId === normalizedProjectId;
+    return taskProjectId === projectId;
   }).length;
 }
 
@@ -392,7 +402,10 @@ export function removeProject(
 }
 
 export function getProjectRatioTotal(projects: ProjectRecord[]): number {
-  return projects.reduce((total, project) => total + project.ratio, 0);
+  return getActiveProjects(projects).reduce(
+    (total, project) => total + project.ratio,
+    0,
+  );
 }
 
 export function createMigratedProjectId(name: string, color: string): string {
@@ -452,8 +465,8 @@ function validateProjectName(name: string): string {
 }
 
 function validateProjectRatio(ratio: number): number {
-  if (!Number.isInteger(ratio) || ratio <= 0 || ratio > 100) {
-    throw new Error("Project ratio must be a whole number between 1 and 100.");
+  if (!Number.isInteger(ratio) || ratio < 0 || ratio > 100) {
+    throw new Error("Project ratio must be a whole number between 0 and 100.");
   }
 
   return ratio;

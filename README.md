@@ -1,4 +1,10 @@
-# Canvas Ratio
+<h1 align="center">Canvas-Ratio</h1>
+
+<p align="center">
+
+<p align="center">
+  <img src="public/canvas-ratio.png" alt="Logo" width="180">
+</p>
 
 Canvas Ratio is a local-first visual time architecture app for planning a day with blocks, colors, and flexible ratios.
 

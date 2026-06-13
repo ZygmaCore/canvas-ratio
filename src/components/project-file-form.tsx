@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import Link from "next/link";
+import { useEffect, useState, type FormEvent } from "react";
 import { InlineMessage } from "@/components/inline-message";
 import {
   createProjectFile,
@@ -8,16 +9,20 @@ import {
   type ProjectFileInput,
 } from "@/lib/project-files";
 import { getTodayDateKey } from "@/lib/time";
+import type { ProjectRecord } from "@/types/canvas";
 
 type ProjectFileFormProps = {
   defaultTodayDate: string;
+  projects: ProjectRecord[];
   onCreateProjectFile: (projectFile: ProjectFile) => void;
 };
 
 export function ProjectFileForm({
   defaultTodayDate,
+  projects,
   onCreateProjectFile,
 }: ProjectFileFormProps) {
+  const [projectId, setProjectId] = useState(projects[0]?.id ?? "");
   const [projectName, setProjectName] = useState("");
   const [unitName, setUnitName] = useState("tasks");
   const [totalTarget, setTotalTarget] = useState("10");
@@ -26,12 +31,28 @@ export function ProjectFileForm({
   );
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+  const hasProjects = projects.length > 0;
+
+  useEffect(() => {
+    if (!projects.length) {
+      setProjectId("");
+      return;
+    }
+
+    if (!projects.some((project) => project.id === projectId)) {
+      setProjectId(projects[0].id);
+    }
+  }, [projectId, projects]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
 
     try {
+      if (!hasProjects || !projectId) {
+        throw new Error("Create a Canvas project before linking progress files.");
+      }
+
       const currentDate = getTodayDateKey();
       const input: ProjectFileInput = {
         projectName,
@@ -40,6 +61,7 @@ export function ProjectFileForm({
         todayDate: currentDate,
         targetDate,
         notes,
+        projectId,
       };
 
       onCreateProjectFile(createProjectFile(input));
@@ -74,7 +96,38 @@ export function ProjectFileForm({
         </span>
       </div>
 
+      {!hasProjects ? (
+        <div className="mt-4">
+          <InlineMessage type="warning">
+            Create a Canvas project before linking progress files.
+          </InlineMessage>
+          <Link
+            href="/canvas"
+            className="mt-3 inline-flex min-h-11 items-center border-2 border-[#1A1A1A] bg-[#FFD91A] px-4 py-2 text-sm font-black shadow-[3px_3px_0_#1A1A1A] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]"
+          >
+            Create Project
+          </Link>
+        </div>
+      ) : null}
+
       <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <label className="block md:col-span-2">
+          <span className="text-sm font-black uppercase text-[#2F5FBF]">
+            Project
+          </span>
+          <select
+            value={projectId}
+            disabled={!hasProjects}
+            onChange={(event) => setProjectId(event.currentTarget.value)}
+            className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-white px-3 py-2 text-base font-bold transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:cursor-not-allowed disabled:bg-gray-200"
+          >
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))}
+          </select>
+        </label>
         <TextInput
           label="Project name"
           value={projectName}
@@ -134,7 +187,8 @@ export function ProjectFileForm({
 
       <button
         type="submit"
-        className="mt-4 min-h-11 border-2 border-[#1A1A1A] bg-[#2F5FBF] px-4 py-2 text-sm font-black text-white shadow-[3px_3px_0_#FFD91A] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]"
+        disabled={!hasProjects}
+        className="mt-4 min-h-11 border-2 border-[#1A1A1A] bg-[#2F5FBF] px-4 py-2 text-sm font-black text-white shadow-[3px_3px_0_#FFD91A] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-[#4a4a4a] disabled:shadow-none"
       >
         Create Project File
       </button>

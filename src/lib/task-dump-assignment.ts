@@ -106,6 +106,8 @@ export function validateTaskDumpAssignment(
       );
     }
   }
+
+  // Non-consecutive block indexes are valid here: blockCount is a quota.
 }
 
 export function applyTaskDumpAssignmentToDay(

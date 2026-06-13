@@ -21,7 +21,7 @@ export function CanvasSummaryGrid({
       description: `${formatPercent(fullDaySummary.whitePercent)} of full day`,
     },
     {
-      label: "Unavailable time",
+      label: "Black time",
       value: `${fullDaySummary.blackMinutes} min`,
       description: `${formatPercent(fullDaySummary.blackPercent)} of full day`,
     },

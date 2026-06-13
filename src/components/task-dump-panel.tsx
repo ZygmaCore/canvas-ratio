@@ -151,6 +151,9 @@ export function TaskDumpPanel({
           <p className="mt-1 text-sm font-bold text-[#4a4a4a]">
             List remaining tasks, copy a prompt, then paste the JSON result.
           </p>
+          <p className="mt-1 text-xs font-bold text-[#4a4a4a]">
+            Blocks are total time quota. They can be split across free blocks.
+          </p>
         </div>
         <button
           type="button"
@@ -218,6 +221,9 @@ export function TaskDumpPanel({
               onChange={(event) => setBlockCount(event.currentTarget.value)}
               className="mt-1 min-h-11 w-full border-2 border-[#1A1A1A] bg-white px-3 py-2 text-base font-bold focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] disabled:bg-[#FFD7BF]"
             />
+            <span className="mt-1 block text-[11px] font-bold leading-tight text-[#4a4a4a]">
+              Total quota, not one continuous chunk.
+            </span>
           </label>
         </div>
 

@@ -25,9 +25,16 @@ export function TaskDumpItemCard({
               {item.note}
             </p>
           ) : null}
-          <p className="mt-2 text-sm font-black text-[#2F5FBF]">
-            {item.blockCount} block{item.blockCount === 1 ? "" : "s"}
-          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm font-black">
+            <span className="text-[#2F5FBF]">
+              Blocks: {item.blockCount}
+            </span>
+            {item.blockCount > 1 ? (
+              <span className="border-2 border-[#1A1A1A] bg-white px-2 py-0.5 text-xs">
+                Can be split
+              </span>
+            ) : null}
+          </div>
         </div>
 
         {editable ? (

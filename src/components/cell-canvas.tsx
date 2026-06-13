@@ -43,7 +43,7 @@ export function CellCanvas({
           </h2>
           <p className="text-sm font-bold text-[#4a4a4a]">
             Click white cells to paint. Click colored cells to clear them.
-            Black cells are unavailable.
+            Black blocks cannot be painted.
           </p>
         </div>
         <span className="border-2 border-[#1A1A1A] bg-[#FFD91A] px-3 py-1 text-sm font-black">
@@ -51,7 +51,7 @@ export function CellCanvas({
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+      <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(58px,1fr))] gap-2">
         {cells.map((cell) => {
           const selected = selectedCellIndices.includes(cell.cellIndex);
           const task = cell.taskId ? taskById.get(cell.taskId) : undefined;
@@ -121,16 +121,22 @@ function CellButton({
     cell.state === "colored"
       ? projectName ?? "Colored project time"
       : cell.state === "black"
-        ? "Unavailable"
+        ? "Black"
         : cell.isMixed
           ? "Mixed"
           : "Free";
+  const displayLabel =
+    selected ? "Selected" : cell.state === "colored" ? "Colored" : label;
   const ariaLabel = getCellAriaLabel(cell, label, selected, sourceLabel);
+  const timeLabels = getCellTimeLabels(cell.label);
+  const textClass = getReadableTextClass(cell);
   const title =
     sourceLabel && note
       ? `${sourceLabel}: ${label}. ${note}`
       : sourceLabel
         ? `${sourceLabel}: ${label}`
+        : cell.state === "colored"
+          ? label
         : undefined;
 
   return (
@@ -149,7 +155,7 @@ function CellButton({
       aria-label={ariaLabel}
       title={title}
       data-testid={`cell-${cell.cellIndex}`}
-      className={`cell-button ${stateClass} ${compact ? "min-h-[50px] p-1.5" : "min-h-[72px] p-2"} border-2 border-[#1A1A1A] text-left focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] ${
+      className={`cell-button ${stateClass} flex aspect-square min-w-0 flex-col items-center justify-center rounded-md border-2 border-[#1A1A1A] p-1 text-center focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] ${
         selected
           ? "shadow-[4px_4px_0_#1A1A1A] ring-4 ring-[#FFD91A]"
           : cell.state === "colored"
@@ -167,26 +173,21 @@ function CellButton({
       } as CSSProperties}
     >
       <span
-        className={`block font-black leading-tight ${compact ? "text-[11px]" : "text-xs"} ${
-          cell.state === "black" ? "text-white" : "text-[#1A1A1A]"
-        }`}
+        aria-hidden="true"
+        className={`relative z-10 flex flex-col items-center justify-center text-center font-mono font-black leading-none tabular-nums ${compact ? "text-[10px] sm:text-[11px]" : "text-xs"} ${textClass}`}
       >
-        {cell.label}
+        <span>{timeLabels.start}</span>
+        <span>{timeLabels.end}</span>
       </span>
       <span
-        className={`${compact ? "mt-0.5" : "mt-1"} block truncate font-bold leading-tight ${compact ? "text-[11px]" : "text-xs"} ${
-          cell.state === "black" ? "text-white" : "text-[#1A1A1A]"
-        }`}
+        aria-hidden="true"
+        className={`relative z-10 mt-1 flex max-w-full items-center justify-center gap-1 text-center font-black leading-none ${compact ? "text-[9px] sm:text-[10px]" : "text-[11px]"} ${textClass}`}
       >
-        {selected ? "Selected" : label}
-      </span>
-      {sourceLabel ? (
         <span
-          className={`block truncate font-bold leading-tight ${compact ? "text-[10px]" : "text-[11px]"} text-[#1A1A1A]`}
-        >
-          {sourceLabel}
-        </span>
-      ) : null}
+          className="h-1.5 w-1.5 shrink-0 rounded-full border border-current bg-current"
+        />
+        <span>{sourceLabel ? "Dump" : displayLabel}</span>
+      </span>
     </button>
   );
 }
@@ -200,7 +201,7 @@ function getCellAriaLabel(
   const timeRange = cell.label.replace("-", "–");
 
   if (cell.state === "black") {
-    return `${timeRange}, unavailable time`;
+    return `${timeRange}, black block`;
   }
 
   if (cell.state === "colored") {
@@ -214,4 +215,37 @@ function getCellAriaLabel(
   }
 
   return `${timeRange}, free time${selected ? ", selected" : ""}`;
+}
+
+function getCellTimeLabels(label: string): { start: string; end: string } {
+  const [start, end] = label.split(/[-–]/);
+
+  return {
+    start: start?.trim() || label,
+    end: end?.trim() || "",
+  };
+}
+
+function getReadableTextClass(cell: CellView): string {
+  if (cell.state === "black" || shouldUseLightText(cell.color)) {
+    return "text-white";
+  }
+
+  return "text-[#1A1A1A]";
+}
+
+function shouldUseLightText(color: string): boolean {
+  const match = /^#?([0-9a-f]{6})$/i.exec(color.trim());
+
+  if (!match) {
+    return false;
+  }
+
+  const value = match[1];
+  const red = parseInt(value.slice(0, 2), 16);
+  const green = parseInt(value.slice(2, 4), 16);
+  const blue = parseInt(value.slice(4, 6), 16);
+  const luminance = (0.2126 * red + 0.7152 * green + 0.0722 * blue) / 255;
+
+  return luminance < 0.48;
 }

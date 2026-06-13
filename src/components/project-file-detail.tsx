@@ -7,12 +7,17 @@ import { ProjectFileReviewButton } from "@/components/project-file-review-button
 import {
   buildProjectFileHtml,
   calculateProjectFileProgress,
+  getReadableTextColor,
+  resolveProjectFileProject,
   toggleProjectFileBlock,
   type ProjectFile,
 } from "@/lib/project-files";
+import { getActiveProjects } from "@/lib/settings";
+import type { ProjectRecord } from "@/types/canvas";
 
 type ProjectFileDetailProps = {
   projectFile: ProjectFile | null;
+  projects: ProjectRecord[];
   onUpdateProjectFile: (projectFile: ProjectFile) => void;
   onDeleteProjectFile: (projectFileId: string) => void;
 };
@@ -22,6 +27,7 @@ const actionButtonClass =
 
 export function ProjectFileDetail({
   projectFile,
+  projects,
   onUpdateProjectFile,
   onDeleteProjectFile,
 }: ProjectFileDetailProps) {
@@ -32,6 +38,29 @@ export function ProjectFileDetail({
     () => (projectFile ? calculateProjectFileProgress(projectFile) : null),
     [projectFile],
   );
+  const linkedProject = useMemo(
+    () => (projectFile ? resolveProjectFileProject(projectFile, projects) : null),
+    [projectFile, projects],
+  );
+  const selectableProjects = useMemo(() => {
+    if (!projectFile) {
+      return getActiveProjects(projects);
+    }
+
+    const activeProjects = getActiveProjects(projects);
+    const currentProject = projectFile.projectId
+      ? projects.find((project) => project.id === projectFile.projectId)
+      : undefined;
+
+    if (
+      currentProject &&
+      !activeProjects.some((project) => project.id === currentProject.id)
+    ) {
+      return [...activeProjects, currentProject];
+    }
+
+    return activeProjects;
+  }, [projectFile, projects]);
 
   useEffect(() => {
     setTargetDate(projectFile?.targetDate ?? "");
@@ -39,7 +68,7 @@ export function ProjectFileDetail({
     setSaved(false);
   }, [projectFile?.id, projectFile?.targetDate, projectFile?.notes]);
 
-  if (!projectFile || !progress) {
+  if (!projectFile || !progress || !linkedProject) {
     return (
       <section className="rounded-lg border-2 border-[#1A1A1A] bg-white p-6 shadow-[4px_4px_0_#1A1A1A]">
         <p className="text-xs font-black uppercase text-[#2F5FBF]">
@@ -78,6 +107,19 @@ export function ProjectFileDetail({
     window.setTimeout(() => setSaved(false), 1600);
   }
 
+  function handleProjectChange(projectId: string) {
+    if (!projectFile) {
+      return;
+    }
+
+    onUpdateProjectFile({
+      ...projectFile,
+      projectId: projectId || undefined,
+    });
+  }
+
+  const linkedTextColor = getReadableTextColor(linkedProject.color);
+
   return (
     <div className="grid min-w-0 gap-4">
       <section className="rounded-lg border-2 border-[#1A1A1A] bg-white p-5 shadow-[5px_5px_0_#1A1A1A]">
@@ -89,6 +131,13 @@ export function ProjectFileDetail({
             <h1 className="mt-1 break-words text-3xl font-black sm:text-4xl">
               {projectFile.projectName}
             </h1>
+            <LinkedProjectBadge
+              name={linkedProject.name}
+              color={linkedProject.color}
+              textColor={linkedTextColor}
+              archived={linkedProject.archived}
+              snapshotName={linkedProject.snapshotName}
+            />
             {projectFile.notes ? (
               <p className="mt-2 break-words text-sm font-bold text-[#4a4a4a]">
                 {projectFile.notes}
@@ -99,11 +148,12 @@ export function ProjectFileDetail({
           <div className="flex flex-wrap gap-2">
             <ProjectFileReviewButton
               projectFile={projectFile}
+              projects={projects}
               className={actionButtonClass}
             />
             <button
               type="button"
-              onClick={() => downloadProjectFileHtml(projectFile)}
+              onClick={() => downloadProjectFileHtml(projectFile, projects)}
               className="min-h-11 border-2 border-[#1A1A1A] bg-[#FFD91A] px-4 py-2 text-sm font-black shadow-[3px_3px_0_#1A1A1A] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]"
             >
               Export HTML
@@ -113,8 +163,11 @@ export function ProjectFileDetail({
 
         <div className="mt-5 h-5 border-2 border-[#1A1A1A] bg-[#FBFBF7]">
           <div
-            className="h-full bg-[#8BCF3F] transition-[width]"
-            style={{ width: `${progress.percentComplete}%` }}
+            className="h-full transition-[width]"
+            style={{
+              width: `${progress.percentComplete}%`,
+              backgroundColor: linkedProject.color,
+            }}
             aria-hidden="true"
           />
         </div>
@@ -175,6 +228,7 @@ export function ProjectFileDetail({
       <ProjectFileBlockGrid
         projectFile={projectFile}
         progress={progress}
+        projectColor={linkedProject.color}
         onToggleBlock={handleToggleBlock}
       />
 
@@ -187,6 +241,26 @@ export function ProjectFileDetail({
             onSubmit={handleSavePlanning}
             className="grid gap-4 md:grid-cols-2"
           >
+            <label className="block md:col-span-2">
+              <span className="text-sm font-black uppercase text-[#2F5FBF]">
+                Linked project
+              </span>
+              <select
+                value={projectFile.projectId ?? ""}
+                onChange={(event) =>
+                  handleProjectChange(event.currentTarget.value)
+                }
+                className="mt-2 min-h-11 w-full border-2 border-[#1A1A1A] bg-white px-3 py-2 text-base font-bold transition focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]"
+              >
+                <option value="">No linked project</option>
+                {selectableProjects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                    {project.archived ? " / archived" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="block">
               <span className="text-sm font-black uppercase text-[#2F5FBF]">
                 Target date
@@ -234,6 +308,45 @@ export function ProjectFileDetail({
   );
 }
 
+function LinkedProjectBadge({
+  name,
+  color,
+  textColor,
+  archived,
+  snapshotName,
+}: {
+  name: string;
+  color: string;
+  textColor: string;
+  archived: boolean;
+  snapshotName?: string;
+}) {
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      <span
+        className="inline-flex min-h-8 max-w-full items-center gap-2 border-2 border-[#1A1A1A] px-3 py-1 text-sm font-black"
+        style={{ backgroundColor: color, color: textColor }}
+        title={
+          snapshotName && name === "Unlinked project"
+            ? `Previously linked to ${snapshotName}`
+            : name
+        }
+      >
+        <span
+          className="h-3 w-3 shrink-0 rounded-full border border-current bg-current"
+          aria-hidden="true"
+        />
+        <span className="min-w-0 break-words">{name}</span>
+      </span>
+      {archived ? (
+        <span className="border-2 border-[#1A1A1A] bg-[#EFEDE4] px-2 py-1 text-xs font-black">
+          Archived
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function MetricCard({
   label,
   value,
@@ -254,8 +367,11 @@ function MetricCard({
   );
 }
 
-function downloadProjectFileHtml(projectFile: ProjectFile) {
-  const html = buildProjectFileHtml(projectFile);
+function downloadProjectFileHtml(
+  projectFile: ProjectFile,
+  projects: ProjectRecord[],
+) {
+  const html = buildProjectFileHtml(projectFile, projects);
   const blob = new Blob([html], { type: "text/html" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");

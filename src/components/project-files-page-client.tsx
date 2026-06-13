@@ -8,11 +8,21 @@ import { ProjectFileForm } from "@/components/project-file-form";
 import { ProjectFileList } from "@/components/project-file-list";
 import {
   deleteProjectFile,
+  getProjectFileProjectSnapshot,
+  isProjectFileUnlinked,
   loadProjectFiles,
   parseProjectFileImport,
   upsertProjectFile,
   type ProjectFile,
 } from "@/lib/project-files";
+import {
+  getActiveProjects,
+  getDefaultSettings,
+  loadSettings,
+  type CanvasSettings,
+} from "@/lib/settings";
+
+type ProjectFileFilter = "all" | "unlinked" | string;
 
 type ProjectFilesPageClientProps = {
   defaultTodayDate: string;
@@ -23,21 +33,55 @@ export function ProjectFilesPageClient({
 }: ProjectFilesPageClientProps) {
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [selectedFileId, setSelectedFileId] = useState("");
+  const [filterProjectId, setFilterProjectId] =
+    useState<ProjectFileFilter>("all");
+  const [settings, setSettings] = useState<CanvasSettings>(() =>
+    getDefaultSettings(),
+  );
   const [message, setMessage] = useState("");
+  const activeProjects = useMemo(
+    () => getActiveProjects(settings.projects),
+    [settings.projects],
+  );
+  const filteredFiles = useMemo(
+    () => filterProjectFiles(files, settings.projects, filterProjectId),
+    [files, settings.projects, filterProjectId],
+  );
   const selectedFile = useMemo(
-    () => files.find((file) => file.id === selectedFileId) ?? files[0] ?? null,
-    [files, selectedFileId],
+    () =>
+      filteredFiles.find((file) => file.id === selectedFileId) ??
+      filteredFiles[0] ??
+      null,
+    [filteredFiles, selectedFileId],
   );
 
   useEffect(() => {
+    setSettings(loadSettings());
     const loadedFiles = loadProjectFiles();
     setFiles(loadedFiles);
     setSelectedFileId(loadedFiles[0]?.id ?? "");
   }, []);
 
+  useEffect(() => {
+    if (filterProjectId === "all" || filterProjectId === "unlinked") {
+      return;
+    }
+
+    if (!activeProjects.some((project) => project.id === filterProjectId)) {
+      setFilterProjectId("all");
+    }
+  }, [activeProjects, filterProjectId]);
+
+  useEffect(() => {
+    if (!selectedFile && filteredFiles.length > 0) {
+      setSelectedFileId(filteredFiles[0].id);
+    }
+  }, [filteredFiles, selectedFile]);
+
   function handleCreateProjectFile(projectFile: ProjectFile) {
     setFiles((currentFiles) => upsertProjectFile(currentFiles, projectFile));
     setSelectedFileId(projectFile.id);
+    setFilterProjectId(projectFile.projectId ?? "unlinked");
     setMessage("Project file created.");
   }
 
@@ -59,14 +103,20 @@ export function ProjectFilesPageClient({
 
   async function handleImportProjectFile(file: File) {
     const contents = await file.text();
-    const projectFile = parseProjectFileImport(contents);
+    const parsedProjectFile = parseProjectFileImport(contents);
 
-    if (!projectFile) {
+    if (!parsedProjectFile) {
       throw new Error("Could not find a valid Project File in that upload.");
     }
 
+    const projectFile = normalizeImportedProjectFile(
+      parsedProjectFile,
+      settings.projects,
+    );
+
     setFiles((currentFiles) => upsertProjectFile(currentFiles, projectFile));
     setSelectedFileId(projectFile.id);
+    setFilterProjectId(projectFile.projectId ?? "unlinked");
     setMessage("Project file imported.");
   }
 
@@ -102,14 +152,20 @@ export function ProjectFilesPageClient({
       <div className="mx-auto grid max-w-[1500px] gap-4 px-4 py-4 sm:px-6 lg:grid-cols-[390px_minmax(0,1fr)] lg:items-start lg:px-8 xl:grid-cols-[430px_minmax(0,1fr)]">
         <aside className="grid min-w-0 gap-4 lg:sticky lg:top-[6rem] lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:pr-1">
           <ProjectFileList
-            files={files}
+            files={filteredFiles}
+            totalFileCount={files.length}
             selectedFileId={selectedFile?.id ?? ""}
+            projects={settings.projects}
+            activeProjects={activeProjects}
+            filterProjectId={filterProjectId}
+            onFilterProjectId={setFilterProjectId}
             onSelectProjectFile={setSelectedFileId}
             onImportProjectFile={handleImportProjectFile}
           />
 
           <ProjectFileForm
             defaultTodayDate={defaultTodayDate}
+            projects={activeProjects}
             onCreateProjectFile={handleCreateProjectFile}
           />
         </aside>
@@ -122,6 +178,7 @@ export function ProjectFilesPageClient({
           ) : null}
           <ProjectFileDetail
             projectFile={selectedFile}
+            projects={settings.projects}
             onUpdateProjectFile={handleUpdateProjectFile}
             onDeleteProjectFile={handleDeleteProjectFile}
           />
@@ -129,4 +186,41 @@ export function ProjectFilesPageClient({
       </div>
     </main>
   );
+}
+
+function filterProjectFiles(
+  files: ProjectFile[],
+  projects: CanvasSettings["projects"],
+  filterProjectId: ProjectFileFilter,
+): ProjectFile[] {
+  if (filterProjectId === "all") {
+    return files;
+  }
+
+  if (filterProjectId === "unlinked") {
+    return files.filter((file) => isProjectFileUnlinked(file, projects));
+  }
+
+  return files.filter((file) => file.projectId === filterProjectId);
+}
+
+function normalizeImportedProjectFile(
+  projectFile: ProjectFile,
+  projects: CanvasSettings["projects"],
+): ProjectFile {
+  if (
+    !projectFile.projectId ||
+    projects.some((project) => project.id === projectFile.projectId)
+  ) {
+    return {
+      ...projectFile,
+      projectSnapshot: getProjectFileProjectSnapshot(projectFile, projects),
+    };
+  }
+
+  return {
+    ...projectFile,
+    projectId: undefined,
+    projectSnapshot: getProjectFileProjectSnapshot(projectFile, projects),
+  };
 }

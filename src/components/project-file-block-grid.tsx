@@ -4,19 +4,23 @@ import type {
   ProjectFile,
   ProjectFileProgress,
 } from "@/lib/project-files";
+import { getReadableTextColor } from "@/lib/project-files";
 
 type ProjectFileBlockGridProps = {
   projectFile: ProjectFile;
   progress: ProjectFileProgress;
+  projectColor: string;
   onToggleBlock: (blockIndex: number) => void;
 };
 
 export function ProjectFileBlockGrid({
   projectFile,
   progress,
+  projectColor,
   onToggleBlock,
 }: ProjectFileBlockGridProps) {
   const recommendedToday = new Set(progress.todayRecommendedBlockIndexes);
+  const completedTextColor = getReadableTextColor(projectColor);
 
   return (
     <section className="rounded-lg border-2 border-[#1A1A1A] bg-white p-4 shadow-[4px_4px_0_#1A1A1A]">
@@ -53,13 +57,15 @@ export function ProjectFileBlockGrid({
               }`}
               title={`${projectFile.unitName} ${block.index + 1}`}
               onClick={() => onToggleBlock(block.index)}
-              className={`aspect-square min-h-9 border-2 border-[#1A1A1A] text-[10px] font-black leading-none transition hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#1A1A1A] focus:outline-none focus:ring-4 focus:ring-[#6FB6FF] ${
-                block.completed
-                  ? "bg-[#8BCF3F]"
+              className="aspect-square min-h-9 border-2 border-[#1A1A1A] text-[10px] font-black leading-none transition hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#1A1A1A] focus:outline-none focus:ring-4 focus:ring-[#6FB6FF]"
+              style={{
+                backgroundColor: block.completed
+                  ? projectColor
                   : recommended
-                    ? "bg-[#FFD91A]"
-                    : "bg-white"
-              }`}
+                    ? "#FFD91A"
+                    : "#FFFFFF",
+                color: block.completed ? completedTextColor : "#1A1A1A",
+              }}
             >
               {block.index + 1}
             </button>
@@ -68,25 +74,26 @@ export function ProjectFileBlockGrid({
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2 text-xs font-black">
-        <LegendChip colorClass="bg-[#8BCF3F]" label="Completed" />
-        <LegendChip colorClass="bg-[#FFD91A]" label="Recommended today" />
-        <LegendChip colorClass="bg-white" label="Remaining" />
+        <LegendChip color={projectColor} label="Completed" />
+        <LegendChip color="#FFD91A" label="Recommended today" />
+        <LegendChip color="#FFFFFF" label="Remaining" />
       </div>
     </section>
   );
 }
 
 function LegendChip({
-  colorClass,
+  color,
   label,
 }: {
-  colorClass: string;
+  color: string;
   label: string;
 }) {
   return (
     <span className="inline-flex items-center gap-2 border-2 border-[#1A1A1A] bg-[#FBFBF7] px-2 py-1">
       <span
-        className={`h-3 w-3 border-2 border-[#1A1A1A] ${colorClass}`}
+        className="h-3 w-3 border-2 border-[#1A1A1A]"
+        style={{ backgroundColor: color }}
         aria-hidden="true"
       />
       {label}

@@ -5,21 +5,24 @@ import {
   buildProjectFileReviewPrompt,
   type ProjectFile,
 } from "@/lib/project-files";
+import type { ProjectRecord } from "@/types/canvas";
 
 type ProjectFileReviewButtonProps = {
   projectFile: ProjectFile;
+  projects: ProjectRecord[];
   className?: string;
 };
 
 export function ProjectFileReviewButton({
   projectFile,
+  projects,
   className = "",
 }: ProjectFileReviewButtonProps) {
   const [status, setStatus] = useState<"idle" | "copied" | "error">("idle");
 
   async function handleCopyPrompt() {
     try {
-      await copyText(buildProjectFileReviewPrompt(projectFile));
+      await copyText(buildProjectFileReviewPrompt(projectFile, projects));
       setStatus("copied");
       window.setTimeout(() => setStatus("idle"), 1800);
     } catch {

@@ -1,12 +1,20 @@
 import { getTodayDateKey } from "@/lib/time";
+import type { ProjectRecord } from "@/types/canvas";
 
 export const PROJECT_FILES_STORAGE_KEY = "canvas-ratio:project-files:v1";
+export const PROJECT_FILE_FALLBACK_COLOR = "#EFEDE4";
 
 export type ProjectFileBlock = {
   index: number;
   completed: boolean;
   completedAt?: string;
   note?: string;
+};
+
+export type ProjectFileProjectSnapshot = {
+  id: string;
+  name: string;
+  color: string;
 };
 
 export type ProjectFile = {
@@ -17,6 +25,8 @@ export type ProjectFile = {
   todayDate: string;
   targetDate: string;
   notes?: string;
+  projectId?: string;
+  projectSnapshot?: ProjectFileProjectSnapshot;
   blocks: ProjectFileBlock[];
   createdAt: string;
   updatedAt: string;
@@ -29,6 +39,7 @@ export type ProjectFileInput = {
   todayDate: string;
   targetDate: string;
   notes?: string;
+  projectId?: string;
 };
 
 export type ProjectFileProgress = {
@@ -54,11 +65,27 @@ export type ProjectFileReviewData = ProjectFileProgress & {
   todayDate: string;
   targetDate: string;
   notes?: string;
+  linkedProject: {
+    projectId: string;
+    projectName: string;
+    projectColor: string;
+    archived: boolean;
+  } | null;
   blocks: Array<{
     index: number;
     completed: boolean;
     completedAt?: string;
   }>;
+};
+
+export type ProjectFileProjectLink = {
+  status: "linked" | "archived" | "unlinked";
+  projectId?: string;
+  name: string;
+  color: string;
+  archived: boolean;
+  snapshotName?: string;
+  snapshotColor?: string;
 };
 
 const dateKeyPattern = /^\d{4}-\d{2}-\d{2}$/;
@@ -75,6 +102,7 @@ export function createProjectFile(input: ProjectFileInput): ProjectFile {
     todayDate: normalizeDateKey(input.todayDate, "Project date"),
     targetDate: normalizeDateKey(input.targetDate, "Target date"),
     notes: input.notes?.trim() || undefined,
+    projectId: input.projectId?.trim() || undefined,
     blocks: Array.from({ length: totalTarget }, (_, index) => ({
       index,
       completed: false,
@@ -220,7 +248,10 @@ export function calculateProjectFileProgress(
 
 export function buildProjectFileReviewData(
   projectFile: ProjectFile,
+  projects: ProjectRecord[] = [],
 ): ProjectFileReviewData {
+  const linkedProject = resolveProjectFileProject(projectFile, projects);
+
   return {
     id: projectFile.id,
     projectName: projectFile.projectName,
@@ -229,6 +260,15 @@ export function buildProjectFileReviewData(
     todayDate: getTodayDateKey(),
     targetDate: projectFile.targetDate,
     notes: projectFile.notes,
+    linkedProject:
+      linkedProject.status === "linked" || linkedProject.status === "archived"
+        ? {
+            projectId: linkedProject.projectId ?? "",
+            projectName: linkedProject.name,
+            projectColor: linkedProject.color,
+            archived: linkedProject.archived,
+          }
+        : null,
     ...calculateProjectFileProgress(projectFile),
     blocks: projectFile.blocks.map((block) => ({
       index: block.index,
@@ -238,8 +278,14 @@ export function buildProjectFileReviewData(
   };
 }
 
-export function buildProjectFileReviewPrompt(projectFile: ProjectFile): string {
-  const data = buildProjectFileReviewData(projectFile);
+export function buildProjectFileReviewPrompt(
+  projectFile: ProjectFile,
+  projects: ProjectRecord[] = [],
+): string {
+  const data = buildProjectFileReviewData(projectFile, projects);
+  const linkedProjectNote = data.linkedProject
+    ? `- This Project File belongs to the linked Canvas project "${data.linkedProject.projectName}" (${data.linkedProject.projectId}).`
+    : "- This Project File is not linked to a Canvas project.";
 
   return `You are helping me review progress on a long-term project.
 
@@ -248,6 +294,7 @@ Project File meaning:
 - Completed blocks are finished units.
 - Incomplete blocks are remaining units.
 - The target date defines how many units should be completed per day.
+${linkedProjectNote}
 
 Your task:
 1. Summarize current progress.
@@ -258,6 +305,7 @@ Your task:
 6. Do not shame me.
 7. Do not invent progress.
 8. Base the review only on the JSON.
+9. Do not invent project categories.
 
 Output format:
 - Project Summary
@@ -274,9 +322,19 @@ ${JSON.stringify(data, null, 2)}
 \`\`\``;
 }
 
-export function buildProjectFileHtml(projectFile: ProjectFile): string {
+export function buildProjectFileHtml(
+  projectFile: ProjectFile,
+  projects: ProjectRecord[] = [],
+): string {
   const progress = calculateProjectFileProgress(projectFile);
-  const json = JSON.stringify(projectFile, null, 2).replace(/</g, "\\u003c");
+  const linkedProject = resolveProjectFileProject(projectFile, projects);
+  const exportPayload: ProjectFile = {
+    ...projectFile,
+    projectSnapshot:
+      getProjectFileProjectSnapshot(projectFile, projects) ??
+      projectFile.projectSnapshot,
+  };
+  const json = JSON.stringify(exportPayload, null, 2).replace(/</g, "\\u003c");
   const blocks = projectFile.blocks
     .map(
       (block) =>
@@ -295,7 +353,7 @@ export function buildProjectFileHtml(projectFile: ProjectFile): string {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtml(projectFile.projectName)} - Canvas Ratio Project File</title>
   <style>
-    :root { --ink: #1a1a1a; --paper: #fbfbf7; --sun: #ffd91a; --sky: #6fb6ff; --leaf: #8bcf3f; }
+    :root { --ink: #1a1a1a; --paper: #fbfbf7; --sun: #ffd91a; --sky: #6fb6ff; --project: ${escapeHtml(linkedProject.color)}; }
     * { box-sizing: border-box; }
     body { margin: 0; color: var(--ink); font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--paper); }
     main { width: min(1100px, 100%); margin: 0 auto; padding: 24px; }
@@ -305,7 +363,9 @@ export function buildProjectFileHtml(projectFile: ProjectFile): string {
     .metric { border: 2px solid var(--ink); background: var(--sun); padding: 12px; font-weight: 900; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(18px, 1fr)); gap: 6px; }
     .block { aspect-ratio: 1; border: 2px solid var(--ink); background: white; display: block; }
-    .block.completed { background: var(--leaf); }
+    .badge { display: inline-flex; align-items: center; gap: 8px; border: 2px solid var(--ink); background: white; padding: 6px 10px; font-weight: 900; }
+    .badge::before { width: 12px; height: 12px; border: 2px solid var(--ink); border-radius: 999px; background: var(--project); content: ""; }
+    .block.completed { background: var(--project); }
     .block.today:not(.completed) { background: var(--sun); box-shadow: inset 0 0 0 3px white; }
     pre { white-space: pre-wrap; overflow-wrap: anywhere; }
   </style>
@@ -315,6 +375,7 @@ export function buildProjectFileHtml(projectFile: ProjectFile): string {
     <section class="card">
       <p><strong>Canvas Ratio Project File</strong></p>
       <h1>${escapeHtml(projectFile.projectName)}</h1>
+      <p class="badge">${escapeHtml(getProjectFileLinkLabel(linkedProject))}</p>
       <p>${escapeHtml(projectFile.notes ?? "")}</p>
       <div class="summary">
         <div class="metric">Progress: ${progress.percentComplete}%</div>
@@ -356,6 +417,84 @@ export function normalizeProjectFiles(raw: unknown): ProjectFile[] {
     .map(normalizeProjectFile)
     .filter((file): file is ProjectFile => !!file)
     .sort((first, second) => second.updatedAt.localeCompare(first.updatedAt));
+}
+
+export function resolveProjectFileProject(
+  projectFile: ProjectFile,
+  projects: ProjectRecord[],
+): ProjectFileProjectLink {
+  const project =
+    projectFile.projectId
+      ? projects.find((projectItem) => projectItem.id === projectFile.projectId)
+      : undefined;
+
+  if (project) {
+    return {
+      status: project.archived ? "archived" : "linked",
+      projectId: project.id,
+      name: project.name,
+      color: project.color,
+      archived: project.archived === true,
+      snapshotName: projectFile.projectSnapshot?.name,
+      snapshotColor: projectFile.projectSnapshot?.color,
+    };
+  }
+
+  return {
+    status: "unlinked",
+    projectId: projectFile.projectId,
+    name: "Unlinked project",
+    color: PROJECT_FILE_FALLBACK_COLOR,
+    archived: false,
+    snapshotName: projectFile.projectSnapshot?.name,
+    snapshotColor: projectFile.projectSnapshot?.color,
+  };
+}
+
+export function getProjectFileProjectSnapshot(
+  projectFile: ProjectFile,
+  projects: ProjectRecord[],
+): ProjectFileProjectSnapshot | undefined {
+  if (!projectFile.projectId) {
+    return projectFile.projectSnapshot;
+  }
+
+  const project = projects.find(
+    (projectItem) => projectItem.id === projectFile.projectId,
+  );
+
+  if (!project) {
+    return projectFile.projectSnapshot;
+  }
+
+  return {
+    id: project.id,
+    name: project.name,
+    color: project.color,
+  };
+}
+
+export function isProjectFileUnlinked(
+  projectFile: ProjectFile,
+  projects: ProjectRecord[],
+): boolean {
+  return resolveProjectFileProject(projectFile, projects).status === "unlinked";
+}
+
+export function getReadableTextColor(backgroundColor: string): string {
+  const match = /^#?([0-9a-f]{6})$/i.exec(backgroundColor.trim());
+
+  if (!match) {
+    return "#1A1A1A";
+  }
+
+  const value = match[1];
+  const red = parseInt(value.slice(0, 2), 16);
+  const green = parseInt(value.slice(2, 4), 16);
+  const blue = parseInt(value.slice(4, 6), 16);
+  const luminance = (0.2126 * red + 0.7152 * green + 0.0722 * blue) / 255;
+
+  return luminance < 0.48 ? "#FFFFFF" : "#1A1A1A";
 }
 
 function normalizeProjectFile(raw: unknown): ProjectFile | null {
@@ -415,10 +554,44 @@ function normalizeProjectFile(raw: unknown): ProjectFile | null {
     todayDate,
     targetDate,
     notes: normalizeOptionalString(raw.notes)?.trim() || undefined,
+    projectId: normalizeOptionalString(raw.projectId)?.trim() || undefined,
+    projectSnapshot: normalizeProjectSnapshot(raw.projectSnapshot),
     blocks,
     createdAt: normalizeOptionalString(raw.createdAt) ?? now,
     updatedAt: normalizeOptionalString(raw.updatedAt) ?? now,
   };
+}
+
+function normalizeProjectSnapshot(
+  rawSnapshot: unknown,
+): ProjectFileProjectSnapshot | undefined {
+  if (!isPlainObject(rawSnapshot)) {
+    return undefined;
+  }
+
+  const id = normalizeOptionalString(rawSnapshot.id)?.trim();
+  const name = normalizeOptionalString(rawSnapshot.name)?.trim();
+  const color = normalizeOptionalString(rawSnapshot.color)?.trim();
+
+  if (!id || !name || !color) {
+    return undefined;
+  }
+
+  return { id, name, color };
+}
+
+function getProjectFileLinkLabel(linkedProject: ProjectFileProjectLink): string {
+  if (linkedProject.status === "archived") {
+    return `${linkedProject.name} / archived`;
+  }
+
+  if (linkedProject.status === "linked") {
+    return linkedProject.name;
+  }
+
+  return linkedProject.snapshotName
+    ? `Unlinked project / previous: ${linkedProject.snapshotName}`
+    : "Unlinked project";
 }
 
 function differenceInCalendarDays(targetDate: string, todayDate: string): number {

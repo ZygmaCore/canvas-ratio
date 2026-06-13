@@ -105,6 +105,7 @@ Canvas Ratio meaning:
 - Some colored blocks may have source "task-dump".
 - Task Dump blocks were classified into projects by the external AI.
 - Review Task Dump blocks as part of their assigned project.
+- Some tasks may be split across multiple blocks because Task Dump blockCount is a flexible quota.
 - Project ratios are recommended balance targets, not strict limits.
 - The user may intentionally paint over or under the recommendation.
 - Each block is 30 minutes.

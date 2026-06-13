@@ -120,17 +120,23 @@ Your task:
 5. Do not invent new tasks.
 6. Do not assign tasks outside the provided block counts.
 7. Respect each task's blockCount exactly.
-8. Use the notes as context.
-9. If the task dump cannot fit, explain why.
-10. Return both a readable schedule and a JSON assignment.
-11. For every assigned block, classify it into projectId.
-12. projectId must be one of the ids from the projects array.
-13. Use taskName and note to choose the best project.
-14. Do not ask the user for project.
-15. Do not invent new project IDs.
-16. If unsure, choose the closest matching project from the projects array.
-17. The JSON assignment must be valid JSON.
-18. Do not wrap the JSON assignment in extra commentary inside the JSON block.
+8. Each task's blockCount is the total number of 30-minute blocks required.
+9. Tasks with blockCount greater than 1 may be split across non-consecutive blocks. blockCount is a quota, not a contiguity requirement.
+10. Do not assume blocks for the same task must be adjacent.
+11. Place each task wherever it fits best.
+12. Only make blocks consecutive if the note clearly says the task needs continuous focus.
+13. The total number of assigned blocks for each task must exactly equal blockCount.
+14. Use the notes as context.
+15. If the task dump cannot fit, explain why.
+16. Return both a readable schedule and a JSON assignment.
+17. For every assigned block, classify it into projectId.
+18. projectId must be one of the ids from the projects array.
+19. Use taskName and note to choose the best project.
+20. Do not ask the user for project.
+21. Do not invent new project IDs.
+22. If unsure, choose the closest matching project from the projects array.
+23. The JSON assignment must be valid JSON.
+24. Do not wrap the JSON assignment in extra commentary inside the JSON block.
 
 Project classification:
 
@@ -162,6 +168,14 @@ JSON Assignment format:
 ]
 }
 
+JSON assignment expectations:
+
+* Keep JSON assignment as one item per block.
+* The same taskName may appear multiple times.
+* Repeated taskName is valid and counts toward that task's blockCount.
+* The same blockIndex must not repeat.
+* Assigned blocks for the same task do not need to be consecutive.
+
 Important:
 
 * Base your answer only on the JSON.
@@ -172,6 +186,7 @@ Important:
 * Only fill white/free blocks.
 * Each taskName must match a taskName from taskDump.
 * The total number of assigned blocks for each task must equal its blockCount.
+* The total number of assigned blocks must equal taskDumpSummary.dumpedBlockCount.
 
 Here is the JSON data:
 

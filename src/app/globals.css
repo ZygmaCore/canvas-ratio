@@ -64,7 +64,7 @@ a {
 
 .cell-button {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   transform: translateZ(0);
   transition:
     transform 140ms ease-out,
